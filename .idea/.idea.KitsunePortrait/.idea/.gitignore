@@ -1,0 +1,39 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Rider ignored files
+/modules.xml
+/projectSettingsUpdater.xml
+/.idea.KitsunePortrait.iml
+/contentModel.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Ignored default folder with query files
+/queries/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Rider / IDE
+.idea/
+*.sln.DotSettings.user
+*.user
+*.sln.docstates
+
+# Результаты сборки
+bin/
+obj/
+*.dll
+*.pdb
+
+# .NET / MSBuild / NuGet
+packages/
+*.nuget.props
+*.nuget.targets
+*.cache
+project.assets.json
+*.AssemblyInfo.cs
+
+# Системные и прочие редакторы
+.DS_Store
+Thumbs.db
+.vscode/

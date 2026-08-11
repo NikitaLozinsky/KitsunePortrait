@@ -1,0 +1,10 @@
+{
+    "Id": "KitsunePortrait",
+    "DisplayName": "Kitsune Portrait Mod",
+    "Version": "0.0.0",
+    "Author": "DeCopiDoge1966",
+    "AssemblyName": "KitsunePortrait.dll",
+    "EntryMethod": "KitsunePortrait.Main.Load",
+    "Requirements": [],
+    "LoadAfter": []
+}

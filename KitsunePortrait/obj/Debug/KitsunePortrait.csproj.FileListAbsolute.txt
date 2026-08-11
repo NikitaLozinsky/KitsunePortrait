@@ -1,0 +1,9 @@
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\bin\Debug\KitsunePortrait.dll
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\bin\Debug\KitsunePortrait.pdb
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.csproj.AssemblyReference.cache
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.AssemblyInfoInputs.cache
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.AssemblyInfo.cs
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.csproj.CoreCompileInputs.cache
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.dll
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.pdb
