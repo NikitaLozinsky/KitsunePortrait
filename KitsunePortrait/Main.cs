@@ -1,20 +1,29 @@
 using System;
 using System.Reflection;
 using HarmonyLib;
+using Kingmaker.PubSubSystem;
 using UnityModManagerNet;
 
 namespace KitsunePortrait
 {
     public static class Main
     {
+        public static UnityModManager.ModEntry ModEntry;
+        public static Settings Settings;
         public static UnityModManager.ModEntry.ModLogger Logger;
         public static bool Enabled;
         private static Harmony _harmonyInstance;
 
         public static bool Load(UnityModManager.ModEntry modEntry)
         {
+            ModEntry = modEntry;
             Logger = modEntry.Logger;
+
+            Settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
+
             modEntry.OnToggle = OnToggle;
+            modEntry.OnGUI = OnGUI;
+            modEntry.OnSaveGUI = OnSaveGUI;
 
             Logger.Log("KitsunePortrait успешно загружен.");
             return true;
@@ -31,12 +40,17 @@ namespace KitsunePortrait
                 {
                     _harmonyInstance ??= new Harmony(modEntry.Info.Id);
                     _harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
-                    Logger.Log("KitsunePortrait включен: Harmony-патчи применены.");
+
+                    EventBus.Subscribe(new KitsuneBuffWatcher());
+
+                    Logger.Log("KitsunePortrait включен: Harmony-патчи и подписки применены.");
                 }
                 else
                 {
+                    EventBus.Unsubscribe(new KitsuneBuffWatcher());
+
                     _harmonyInstance?.UnpatchAll(modEntry.Info.Id);
-                    Logger.Log("KitsunePortrait отключен: Harmony-патчи сняты.");
+                    Logger.Log("KitsunePortrait отключен: Harmony-патчи и подписки сняты.");
                 }
 
                 return true;
@@ -46,6 +60,16 @@ namespace KitsunePortrait
                 Logger.Error($"Ошибка при переключении мода: {ex}");
                 return false;
             }
+        }
+
+        public static void OnGUI(UnityModManager.ModEntry modEntry)
+        {
+            ModUI.OnGUI(modEntry);
+        }
+
+        public static void OnSaveGUI(UnityModManager.ModEntry modEntry)
+        {
+            Settings.Save(modEntry);
         }
     }
 }

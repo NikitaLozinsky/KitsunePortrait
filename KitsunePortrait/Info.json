@@ -1,10 +1,10 @@
 {
     "Id": "KitsunePortrait",
-    "DisplayName": "Kitsune Portrait Mod",
-    "Version": "0.0.0",
+    "DisplayName": "Kitsune Portrait Switcher",
     "Author": "DeCopiDoge1966",
-    "AssemblyName": "KitsunePortrait.dll",
-    "EntryMethod": "KitsunePortrait.Main.Load",
+    "Version": "0.0.1",
+    "ManagerVersion": "0.24.0",
     "Requirements": [],
-    "LoadAfter": []
+    "EntryMethod": "KitsunePortrait.Main.Load",
+    "AssemblyName": "KitsunePortrait.dll"
 }
