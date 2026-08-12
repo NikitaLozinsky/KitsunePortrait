@@ -27,7 +27,8 @@ namespace KitsunePortrait
             Logger = modEntry.Logger;
 
             Settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
-
+            Settings.OnAfterLoad(); 
+            
             modEntry.OnToggle = OnToggle;
             modEntry.OnGUI = OnGUI;
             modEntry.OnSaveGUI = OnSaveGUI;

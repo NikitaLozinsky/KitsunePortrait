@@ -23,6 +23,9 @@ namespace KitsunePortrait
     {
         public static bool IsInPortraitPhase;
         public static EditingPortraitForm CurrentForm = EditingPortraitForm.Fox;
+        
+        public static string FoxPortrait;
+        public static string HumanPortrait;
     }
 
     [HarmonyPatch(typeof(CharGenPortraitPhaseVM))]
@@ -91,7 +94,6 @@ namespace KitsunePortrait
         {
             if (portrait == null) return true;
 
-            // Кастомный портрет имеет CustomId, у ванильного сохраняем GUID блупринта
             string portraitId = portrait.Data?.CustomId;
             if (string.IsNullOrEmpty(portraitId))
             {
@@ -118,6 +120,8 @@ namespace KitsunePortrait
     public class KitsunePortraitOverlay : MonoBehaviour
     {
         private static KitsunePortraitOverlay _instance;
+        private Rect _windowRect;
+        private const int WindowId = 98765;
 
         public static void EnsureInstance()
         {
@@ -128,15 +132,53 @@ namespace KitsunePortrait
             _instance = go.AddComponent<KitsunePortraitOverlay>();
         }
 
+        private void Awake()
+        {
+            InitWindowRect();
+        }
+
+        private void InitWindowRect()
+        {
+            float width = 540f;
+            float height = 85f;
+
+            float left = Main.Settings.OverlayX >= 0 ? Main.Settings.OverlayX : (Screen.width - width) / 2f;
+            float top = Main.Settings.OverlayY >= 0 ? Main.Settings.OverlayY : 15f;
+
+            _windowRect = new Rect(left, top, width, height);
+        }
+        
+        /*
         private void OnGUI()
         {
             if (!Main.IsKitsuneSelectedInCharGen) return;
+
+            GUI.depth = -1000;
+
+            if (CharGenState.IsInPortraitPhase || string.IsNullOrEmpty(Main.TemporaryHumanPortrait))
+            {
+                _windowRect = GUI.Window(WindowId, _windowRect, DrawWindowContent, "<b><color=#FFD700>Кицунэ Портреты</color></b>");
+            }
+        }
+        */
+
+        private void DrawWindowContent(int windowID)
+        {
+            // Позволяет перетаскивать окно за верхнюю плашку и за иконку в центре
+            GUI.DragWindow(new Rect(0, 0, _windowRect.width, 22));
+
+            if (Math.Abs(Main.Settings.OverlayX - _windowRect.x) > 1f || Math.Abs(Main.Settings.OverlayY - _windowRect.y) > 1f)
+            {
+                Main.Settings.OverlayX = _windowRect.x;
+                Main.Settings.OverlayY = _windowRect.y;
+                Main.Settings.Save(Main.ModEntry);
+            }
 
             if (CharGenState.IsInPortraitPhase)
             {
                 DrawToggle();
             }
-            else if (string.IsNullOrEmpty(Main.TemporaryHumanPortrait))
+            else
             {
                 DrawReminder();
             }
@@ -144,17 +186,12 @@ namespace KitsunePortrait
 
         private void DrawToggle()
         {
-            GUI.depth = -1000;
-            float width = 520f;
-            float height = 55f;
-            float left = (Screen.width - width) / 2f;
-            float top = 12f;
-
-            GUILayout.BeginArea(new Rect(left, top, width, height), GUI.skin.box);
             GUILayout.BeginHorizontal();
 
             GUIStyle btnStyle = new GUIStyle(GUI.skin.button) { richText = true };
+            GUIStyle gripStyle = new GUIStyle(GUI.skin.box) { richText = true };
 
+            // 1. Кнопка «Лиса»
             bool isFoxActive = CharGenState.CurrentForm == EditingPortraitForm.Fox;
             string foxStatus = string.IsNullOrEmpty(Main.SelectedFoxPortrait) ? "не выбран" : Main.SelectedFoxPortrait;
             string foxHeader = string.IsNullOrEmpty(Main.SelectedFoxPortrait) ? "Лиса (выберите)" : "Лиса (выбрано)";
@@ -167,6 +204,10 @@ namespace KitsunePortrait
                 CharGenState.CurrentForm = EditingPortraitForm.Fox;
             }
 
+            // 2. Центральная иконка перетаскивания окна
+            GUILayout.Box("<b><size=16><color=#FFD700>✥</color></size></b>\n<size=9><color=#AAAAAA>тяни</color></size>", gripStyle, GUILayout.Width(42), GUILayout.Height(42));
+
+            // 3. Кнопка «Человек»
             bool isHumanActive = CharGenState.CurrentForm == EditingPortraitForm.Human;
             string humanStatus = string.IsNullOrEmpty(Main.TemporaryHumanPortrait) ? "не выбран" : Main.TemporaryHumanPortrait;
             string humanHeader = string.IsNullOrEmpty(Main.TemporaryHumanPortrait) ? "Человек (выберите)" : "Человек (выбрано)";
@@ -180,35 +221,18 @@ namespace KitsunePortrait
             }
 
             GUILayout.EndHorizontal();
-            GUILayout.EndArea();
         }
 
         private void DrawReminder()
         {
-            GUI.depth = -1000;
-            float width = 480f;
-            float height = 28f;
-            float left = (Screen.width - width) / 2f;
-            float top = 12f;
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
 
-            GUIStyle style = new GUIStyle(GUI.skin.box) { richText = true };
-            SetCenterAlignment(style);
-            GUI.Box(new Rect(left, top, width, height),
-                "<color=#FFD700>🦊 Вернитесь на вкладку портрета для настройки формы человека</color>", style);
-        }
+            GUIStyle labelStyle = new GUIStyle(GUI.skin.label) { richText = true };
+            GUILayout.Label("<color=#FFD700>🦊 Вернитесь на вкладку портрета для настройки формы человека</color>", labelStyle, GUILayout.Height(35));
 
-        private static void SetCenterAlignment(GUIStyle style)
-        {
-            try
-            {
-                var alignmentProp = typeof(GUIStyle).GetProperty("alignment");
-                if (alignmentProp == null) return;
-                alignmentProp.SetValue(style, Enum.ToObject(alignmentProp.PropertyType, 4));
-            }
-            catch
-            {
-                // Игнорируем ошибки выравнивания
-            }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
         }
     }
 
