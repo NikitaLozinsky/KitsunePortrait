@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections;
-using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 using HarmonyLib;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Classes;
@@ -9,190 +8,196 @@ using Kingmaker.UI.MVVM._VM.CharGen;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases.Portrait;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases.Race;
 using Kingmaker.UnitLogic.Class.LevelUp;
+using UnityEngine;
 
+// ReSharper disable InconsistentNaming
 namespace KitsunePortrait
 {
-    public static class CharGenState
+    public enum EditingPortraitForm
     {
-        // Храним ссылку на фазу "Человек" как object, чтобы не зависеть от типа
-        public static object HumanPortraitPhaseInstance;
+        Fox,
+        Human
     }
 
-    // 1. Патч на конструктор CharGenVM – добавляем вторую фазу портрета
-    [HarmonyPatch(typeof(CharGenVM))]
-    [HarmonyPatch(MethodType.Constructor, typeof(LevelUpController))]
-    public static class CharGenVM_Constructor_Patch
+    public static class CharGenState
     {
-        public static void Postfix(CharGenVM __instance, LevelUpController levelUpController)
+        public static bool IsInPortraitPhase;
+        public static EditingPortraitForm CurrentForm = EditingPortraitForm.Fox;
+    }
+
+    // 1. Отслеживаем вход в экран выбора портрета
+    [HarmonyPatch(typeof(CharGenPortraitPhaseVM))]
+    public static class CharGenPortraitPhaseLifecyclePatch
+    {
+        [HarmonyPatch(MethodType.Constructor, typeof(LevelUpController))]
+        [HarmonyPostfix]
+        public static void OnConstruct()
         {
-            try
-            {
-                // Получаем список фаз
-                var phasesList = Traverse.Create(__instance).Field("m_Phases").GetValue() as IList;
-                if (phasesList == null) return;
+            CharGenState.IsInPortraitPhase = true;
+            CharGenState.CurrentForm = EditingPortraitForm.Fox;
 
-                // Проверяем, не добавлена ли уже наша фаза (по DisplayName)
-                foreach (var phase in phasesList)
-                {
-                    var displayName = Traverse.Create(phase).Field("m_DisplayName").GetValue<string>();
-                    if (displayName == "Человек")
-                        return;
-                }
-
-                // Создаём новую фазу портрета и меняем её DisplayName на "Человек"
-                var humanPhase = new CharGenPortraitPhaseVM(levelUpController);
-                Traverse.Create(humanPhase).Field("m_DisplayName").SetValue("Человек");
-                CharGenState.HumanPortraitPhaseInstance = humanPhase;
-
-                // Вставляем на вторую позицию (после основной фазы портрета)
-                phasesList.Insert(2, humanPhase);
-                Main.Logger.Log("[CharGen] Фаза 'Человек' добавлена в m_Phases.");
-
-                // Теперь пытаемся добавить кнопку в навигацию
-                // Вариант 1: поле m_NavigationEntities (если есть)
-                var navField = Traverse.Create(__instance).Field("m_NavigationEntities");
-                if (navField.FieldExists())
-                {
-                    var navList = navField.GetValue() as IList;
-                    if (navList != null)
-                    {
-                        // Получаем тип CharGenNavigationEntityVM через рефлексию
-                        Type navEntityType = Type.GetType("Kingmaker.UI.MVVM._VM.CharGen.CharGenNavigationEntityVM, Assembly-CSharp");
-                        if (navEntityType != null)
-                        {
-                            // Ищем конструктор с параметром (object) или (object, bool)
-                            var ctor = navEntityType.GetConstructor(new[] { typeof(object) });
-                            if (ctor == null)
-                                ctor = navEntityType.GetConstructor(new[] { typeof(object), typeof(bool) });
-                            if (ctor != null)
-                            {
-                                // Создаём экземпляр кнопки, передавая нашу фазу
-                                object navEntity = ctor.Invoke(new object[] { humanPhase, false });
-                                if (navEntity != null)
-                                {
-                                    // Вставляем кнопку на ту же позицию (после основной кнопки портрета)
-                                    navList.Insert(2, navEntity);
-                                    Main.Logger.Log("[CharGen] Кнопка 'Человек' добавлена в m_NavigationEntities.");
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // Вариант 2: если поля нет, пытаемся вызвать метод обновления навигации
-                    var updateMethod = AccessTools.Method(typeof(CharGenVM), "UpdateNavigation") 
-                                       ?? AccessTools.Method(typeof(CharGenVM), "RefreshNavigation")
-                                       ?? AccessTools.Method(typeof(CharGenVM), "BuildNavigation");
-                    if (updateMethod != null)
-                    {
-                        updateMethod.Invoke(__instance, Array.Empty<object>());
-                        Main.Logger.Log("[CharGen] Навигация обновлена через вызов метода.");
-                    }
-                    else
-                    {
-                        // Вариант 3: пробуем вызвать RaisePropertyChanged для свойства NavigationEntities
-                        var prop = AccessTools.Property(typeof(CharGenVM), "NavigationEntities");
-                        if (prop != null && prop.CanRead)
-                        {
-                            var raiseMethod = AccessTools.Method(typeof(CharGenVM), "RaisePropertyChanged", new[] { typeof(string) });
-                            if (raiseMethod != null)
-                            {
-                                raiseMethod.Invoke(__instance, new object[] { "NavigationEntities" });
-                                Main.Logger.Log("[CharGen] Вызван RaisePropertyChanged для NavigationEntities.");
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Main.Logger.Error($"[CharGen] Ошибка в конструкторе: {ex}");
-            }
+            KitsunePortraitOverlay.EnsureInstance();
         }
     }
 
-    // 2. Патч на выбор расы – запоминаем, выбрана ли кицунэ
+    // 2. Перехватываем выбор расы
     [HarmonyPatch(typeof(CharGenRacePhaseVM), "SelectRaceInMechanic")]
     public static class CharGenRaceSelectPatch
     {
         public static void Postfix(BlueprintRace race)
         {
             if (race == null) return;
-            // Используем единый GUID из PortraitManager
-            bool isKitsune = race.AssetGuidThreadSafe == PortraitManager.KitsuneRaceGuid;
+
+            string raceGuid = race.AssetGuid.ToString();
+            bool isKitsune = raceGuid == "fd188bb7bb0002e49863aec93bfb9d99" 
+                             || race.name.Equals("KitsuneRace", StringComparison.OrdinalIgnoreCase);
+
             Main.IsKitsuneSelectedInCharGen = isKitsune;
-            Main.Logger.Log($"[CharGen] Выбрана раса: '{race.name}'. Кицунэ? {isKitsune}");
+            Main.Logger.Log($"[CharGen] Выбрана раса: '{race.name}'. Это Кицунэ? -> {isKitsune}");
         }
     }
 
-    // 3. Патч на выбор портрета – определяем, какая вкладка активна
+    // 3. Распределяем клики по портретам в зависимости от выбранного режима (Лиса / Человек)
     [HarmonyPatch(typeof(CharGenPortraitPhaseVM), "UpdatePortraitInLevelupController")]
     public static class CharGenPortraitSelectPatch
     {
-        public static bool Prefix(CharGenPortraitPhaseVM __instance, BlueprintPortrait portrait)
+        public static bool Prefix(BlueprintPortrait portrait)
         {
             if (portrait == null) return true;
+
             string portraitId = portrait.Data?.CustomId ?? portrait.name;
 
-            // Проверяем DisplayName фазы
-            string displayName = Traverse.Create(__instance).Field("m_DisplayName").GetValue<string>();
-            if (displayName == "Человек")
+            if (Main.IsKitsuneSelectedInCharGen)
             {
-                // Это наша фаза – запоминаем портрет человека
-                Main.TemporaryHumanPortrait = portraitId;
-                Main.Logger.Log($"[CharGen] Выбран портрет человека: '{portraitId}'");
-            }
-            else
-            {
-                // Основная фаза – если выбрана кицунэ, запоминаем как лисью
-                if (Main.IsKitsuneSelectedInCharGen)
+                if (CharGenState.CurrentForm == EditingPortraitForm.Human)
                 {
-                    Main.SelectedFoxPortrait = portraitId;
-                    Main.Logger.Log($"[CharGen] Выбран портрет лисы: '{portraitId}'");
+                    Main.TemporaryHumanPortrait = portraitId;
+                    Main.Logger.Log($"[CharGen] Зафиксирован портрет ЧЕЛОВЕКА: '{portraitId}'");
+                    return true; 
                 }
+
+                Main.SelectedFoxPortrait = portraitId;
+                Main.Logger.Log($"[CharGen] Зафиксирован портрет ЛИСЫ: '{portraitId}'");
             }
+
             return true;
         }
     }
 
-    // 4. Патч на завершение генерации – сохраняем оба портрета
+    // 4. GUI-оверлей без зависимости от FontStyle
+    public class KitsunePortraitOverlay : MonoBehaviour
+    {
+        private static KitsunePortraitOverlay _instance;
+
+        public static void EnsureInstance()
+        {
+            if (_instance != null) return;
+
+            var go = new GameObject("[KitsunePortraitOverlay]");
+            DontDestroyOnLoad(go);
+            _instance = go.AddComponent<KitsunePortraitOverlay>();
+        }
+
+        private void OnGUI()
+        {
+            if (!Main.IsKitsuneSelectedInCharGen || !CharGenState.IsInPortraitPhase)
+                return;
+
+            GUI.depth = -1000;
+            float width = 480f;
+            float height = 45f;
+            float left = (Screen.width - width) / 2f;
+            float top = 12f;
+
+            GUILayout.BeginArea(new Rect(left, top, width, height), GUI.skin.box);
+            GUILayout.BeginHorizontal();
+
+            // Включаем RichText для разметки тегами <b> и <color>
+            GUIStyle btnStyle = new GUIStyle(GUI.skin.button) { richText = true };
+
+            // Оформление кнопки "Лиса"
+            bool isFoxActive = CharGenState.CurrentForm == EditingPortraitForm.Fox;
+            string foxText = string.IsNullOrEmpty(Main.SelectedFoxPortrait) ? "Лиса (выберите)" : "Лиса (выбрано)";
+            string foxLabel = isFoxActive 
+                ? $"<b><color=#FFD700>🦊 {foxText}</color></b>" 
+                : $"🦊 {foxText}";
+
+            if (GUILayout.Button(foxLabel, btnStyle, GUILayout.Height(30)))
+            {
+                CharGenState.CurrentForm = EditingPortraitForm.Fox;
+            }
+
+            // Оформление кнопки "Человек"
+            bool isHumanActive = CharGenState.CurrentForm == EditingPortraitForm.Human;
+            string humanText = string.IsNullOrEmpty(Main.TemporaryHumanPortrait) ? "Человек (выберите)" : "Человек (выбрано)";
+            string humanLabel = isHumanActive 
+                ? $"<b><color=#FFD700>👤 {humanText}</color></b>" 
+                : $"👤 {humanText}";
+
+            if (GUILayout.Button(humanLabel, btnStyle, GUILayout.Height(30)))
+            {
+                CharGenState.CurrentForm = EditingPortraitForm.Human;
+            }
+
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+        }
+    }
+
+    // 5. Финализация и сохранение обоих портретов
     [HarmonyPatch(typeof(CharGenContextVM), "CompleteCharGen")]
     public static class CharGenCompletePatch
     {
-        public static void Prefix(CharGenContextVM __instance)
+        [SuppressMessage("ReSharper", "InconsistentNaming")]
+        public static void Prefix(object __instance)
         {
             try
             {
-                var controller = Traverse.Create(__instance).Field("m_LevelUpController").GetValue<LevelUpController>();
-                var unit = controller?.Unit;
+                var controller = Traverse.Create(__instance)
+                    .Field("m_LevelUpController")
+                    .GetValue<LevelUpController>();
+
+                UnitEntityData unit = controller?.Unit;
                 if (unit == null) return;
 
-                bool isKitsune = Main.IsKitsuneSelectedInCharGen ||
-                                 (unit.Progression?.Race != null &&
-                                  unit.Progression.Race.AssetGuidThreadSafe == PortraitManager.KitsuneRaceGuid);
+                bool isKitsune = Main.IsKitsuneSelectedInCharGen || 
+                                 (unit.Progression?.Race != null && unit.Progression.Race.AssetGuid.ToString() == "fd188bb7bb0002e49863aec93bfb9d99");
 
-                if (!isKitsune) return;
-
-                string unitId = unit.UniqueId;
-                if (!Main.Settings.CharacterPortraits.ContainsKey(unitId))
-                    Main.Settings.CharacterPortraits[unitId] = new PortraitPair();
-
-                if (!string.IsNullOrEmpty(Main.SelectedFoxPortrait))
-                    Main.Settings.CharacterPortraits[unitId].FoxPortrait = Main.SelectedFoxPortrait;
-
-                if (!string.IsNullOrEmpty(Main.TemporaryHumanPortrait))
+                if (isKitsune)
                 {
-                    Main.Settings.CharacterPortraits[unitId].HumanPortrait = Main.TemporaryHumanPortrait;
-                    Main.TemporaryHumanPortrait = string.Empty;
+                    string unitId = unit.UniqueId;
+
+                    if (!Main.Settings.CharacterPortraits.ContainsKey(unitId))
+                    {
+                        Main.Settings.CharacterPortraits[unitId] = new PortraitPair();
+                    }
+
+                    if (!string.IsNullOrEmpty(Main.SelectedFoxPortrait))
+                    {
+                        Main.Settings.CharacterPortraits[unitId].FoxPortrait = Main.SelectedFoxPortrait;
+                        
+                        BlueprintPortrait foxBp = ResourcesLibrary.TryGetBlueprint<BlueprintPortrait>(Main.SelectedFoxPortrait);
+                        if (foxBp != null && unit.UISettings != null)
+                        {
+                            unit.UISettings.SetPortrait(foxBp);
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(Main.TemporaryHumanPortrait))
+                    {
+                        Main.Settings.CharacterPortraits[unitId].HumanPortrait = Main.TemporaryHumanPortrait;
+                        Main.TemporaryHumanPortrait = string.Empty;
+                    }
+
+                    Main.Settings.Save(Main.ModEntry);
+                    Main.Logger.Log($"[CharGen] УСПЕШНО СОХРАНЕНО: {unit.CharacterName} | Лиса: '{Main.Settings.CharacterPortraits[unitId].FoxPortrait}' | Человек: '{Main.Settings.CharacterPortraits[unitId].HumanPortrait}'");
                 }
 
-                Main.Settings.Save(Main.ModEntry);
-                Main.Logger.Log($"[CharGen] Сохранены портреты для {unit.CharacterName}");
+                CharGenState.IsInPortraitPhase = false;
             }
             catch (Exception ex)
             {
-                Main.Logger.Error($"[CharGen] Ошибка в CompleteCharGen: {ex}");
+                Main.Logger.Error($"[CharGen] Ошибка при финализации: {ex}");
             }
         }
     }
