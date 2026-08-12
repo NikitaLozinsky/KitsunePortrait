@@ -48,6 +48,10 @@
                 <HintPath>$(PathfinderInstallDir)\PathfinderWrathOfTheRighteous_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
                 <Private>False</Private>
             </Reference>
+
+        <Reference Include="Owlcat.Runtime.UI">
+            <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Pathfinder Wrath of the Righteous\Wrath_Data\Managed\Owlcat.Runtime.UI.dll</HintPath>
+        </Reference>
         
     </ItemGroup>
 

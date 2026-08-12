@@ -12,7 +12,14 @@ namespace KitsunePortrait
         public static Settings Settings;
         public static UnityModManager.ModEntry.ModLogger Logger;
         public static bool Enabled;
+
         private static Harmony _harmonyInstance;
+        private static KitsuneBuffWatcher _buffWatcher;
+
+        // Временное состояние для экрана создания персонажа (CharGen)
+        public static bool IsKitsuneSelectedInCharGen;
+        public static string SelectedFoxPortrait = string.Empty;
+        public static string TemporaryHumanPortrait = string.Empty;
 
         public static bool Load(UnityModManager.ModEntry modEntry)
         {
@@ -41,13 +48,18 @@ namespace KitsunePortrait
                     _harmonyInstance ??= new Harmony(modEntry.Info.Id);
                     _harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
 
-                    EventBus.Subscribe(new KitsuneBuffWatcher());
+                    // Используем один экземпляр вочера
+                    _buffWatcher ??= new KitsuneBuffWatcher();
+                    EventBus.Subscribe(_buffWatcher);
 
                     Logger.Log("KitsunePortrait включен: Harmony-патчи и подписки применены.");
                 }
                 else
                 {
-                    EventBus.Unsubscribe(new KitsuneBuffWatcher());
+                    if (_buffWatcher != null)
+                    {
+                        EventBus.Unsubscribe(_buffWatcher);
+                    }
 
                     _harmonyInstance?.UnpatchAll(modEntry.Info.Id);
                     Logger.Log("KitsunePortrait отключен: Harmony-патчи и подписки сняты.");
