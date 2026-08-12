@@ -2,7 +2,7 @@
     "Id": "KitsunePortrait",
     "DisplayName": "Kitsune Portrait Switcher",
     "Author": "DeCopiDoge1966",
-    "Version": "0.0.2",
+    "Version": "0.0.5",
     "ManagerVersion": "0.24.0",
     "Requirements": [],
     "EntryMethod": "KitsunePortrait.Main.Load",

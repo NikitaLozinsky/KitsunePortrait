@@ -26,6 +26,12 @@
             <Private>False</Private>
         </Reference>
 
+        <!-- Нужен для GUIStyle/GUI.Box/TextAnchor и прочего legacy IMGUI, которое использует оверлей. -->
+        <Reference Include="UnityEngine.IMGUIModule">
+            <HintPath>$(WOTR_PATH)\Wrath_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+
         <Reference Include="UnityModManager">
             <HintPath>$(WOTR_PATH)\Wrath_Data\Managed\UnityModManager\UnityModManager.dll</HintPath>
             <Private>False</Private>
@@ -36,23 +42,11 @@
             <Private>False</Private>
         </Reference>
 
-            <Reference Include="UnityEngine">
-                <HintPath>$(PathfinderInstallDir)\PathfinderWrathOfTheRighteous_Data\Managed\UnityEngine.dll</HintPath>
-                <Private>False</Private>
-            </Reference>
-            <Reference Include="UnityEngine.IMGUIModule">
-                <HintPath>$(PathfinderInstallDir)\PathfinderWrathOfTheRighteous_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
-                <Private>False</Private>
-            </Reference>
-            <Reference Include="UnityEngine.CoreModule">
-                <HintPath>$(PathfinderInstallDir)\PathfinderWrathOfTheRighteous_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-                <Private>False</Private>
-            </Reference>
-
         <Reference Include="Owlcat.Runtime.UI">
-            <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Pathfinder Wrath of the Righteous\Wrath_Data\Managed\Owlcat.Runtime.UI.dll</HintPath>
+            <HintPath>$(WOTR_PATH)\Wrath_Data\Managed\Owlcat.Runtime.UI.dll</HintPath>
+            <Private>False</Private>
         </Reference>
-        
+
     </ItemGroup>
 
     <Target Name="DeployMod" AfterTargets="Build">

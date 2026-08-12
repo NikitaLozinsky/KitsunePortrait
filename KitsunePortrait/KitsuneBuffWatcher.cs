@@ -1,5 +1,4 @@
-﻿using Kingmaker.EntitySystem.Entities;
-using Kingmaker.PubSubSystem;
+﻿using Kingmaker.PubSubSystem;
 using Kingmaker.UnitLogic.Buffs;
 
 namespace KitsunePortrait
@@ -18,9 +17,9 @@ namespace KitsunePortrait
 
         private void CheckAndApply(Buff buff)
         {
-            if (buff?.Blueprint?.AssetGuidThreadSafe == PortraitManager.KitsuneHumanBuffGuid)
+            if (buff?.Blueprint?.AssetGuidThreadSafe == Guids.KitsuneHumanBuff)
             {
-                Main.Logger?.Log($"[KitsunePortrait] Перехвачено изменение баффа смены формы у {buff.Owner?.CharacterName}!");
+                Main.Logger?.Log($"[KitsunePortrait] Изменение формы у {buff.Owner?.CharacterName}");
                 PortraitManager.UpdatePortrait(buff.Owner);
             }
         }

@@ -62,6 +62,12 @@ namespace KitsunePortrait
                     }
 
                     _harmonyInstance?.UnpatchAll(modEntry.Info.Id);
+
+                    IsKitsuneSelectedInCharGen = false;
+                    SelectedFoxPortrait = string.Empty;
+                    TemporaryHumanPortrait = string.Empty;
+                    CharGenState.IsInPortraitPhase = false;
+
                     Logger.Log("KitsunePortrait отключен: Harmony-патчи и подписки сняты.");
                 }
 

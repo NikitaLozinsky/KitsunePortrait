@@ -14,9 +14,6 @@ namespace KitsunePortrait
         // Словарь: [UniqueId персонажа] -> { FoxPortrait, HumanPortrait }
         public Dictionary<string, PortraitPair> CharacterPortraits = new Dictionary<string, PortraitPair>();
 
-        // Временное хранилище на время создания персонажа (пока нет UniqueId)
-        public static string TemporaryHumanPortrait = "";
-
         public override void Save(UnityModManager.ModEntry modEntry)
         {
             Save(this, modEntry);
