@@ -2,8 +2,9 @@
 using System.Reflection;
 using HarmonyLib;
 using Kingmaker.UI.MVVM._PCView.CharGen.Phases.Portrait;
-using Owlcat.Runtime.UI.Controls.Button;
+using Owlcat.Runtime.UI.Controls.Toggles;
 using TMPro;
+using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,10 +14,14 @@ namespace KitsunePortrait
     public static class KitsuneCharGenUIPatch
     {
         private static GameObject _nativePanel;
-        private static OwlcatButton _foxButton;
-        private static OwlcatButton _humanButton;
+        private static OwlcatToggle _formToggle;      // используется, если нашёлся живой шаблон
+        private static Button _fallbackFoxButton;     // используется, если шаблона нет
+        private static Button _fallbackHumanButton;
+        private static Image _fallbackFoxBg;
+        private static Image _fallbackHumanBg;
         private static TextMeshProUGUI _foxText;
         private static TextMeshProUGUI _humanText;
+        private static IDisposable _toggleSubscription;
 
         [HarmonyTargetMethod]
         public static MethodBase TargetMethod()
@@ -25,9 +30,9 @@ namespace KitsunePortrait
             while (currentType != null && currentType != typeof(object))
             {
                 MethodInfo mi = currentType.GetMethod(
-                    "BindViewImplementation", 
+                    "BindViewImplementation",
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
-                
+
                 if (mi != null) return mi;
                 currentType = currentType.BaseType;
             }
@@ -42,15 +47,12 @@ namespace KitsunePortrait
             {
                 if (__instance == null) return;
 
-                Transform parentTransform = __instance.transform.Find("ContentWrapper");
-                if (parentTransform == null) parentTransform = __instance.transform;
+                Transform rootTransform = __instance.transform;
 
-                OwlcatButton templateButton = __instance.GetComponentInChildren<OwlcatButton>(true);
-                if (templateButton == null) return;
-
-                if (_nativePanel == null || _nativePanel.transform.parent != parentTransform)
+                if (_nativePanel == null || _nativePanel.transform.parent != rootTransform)
                 {
-                    BuildNativeUI(parentTransform, templateButton);
+                    OwlcatToggle toggleTemplate = FindToggleTemplate(__instance);
+                    BuildNativeUI(rootTransform, toggleTemplate);
                 }
 
                 UpdateUIState();
@@ -62,22 +64,57 @@ namespace KitsunePortrait
         }
         // ReSharper restore InconsistentNaming
 
-        private static void BuildNativeUI(Transform parent, OwlcatButton template)
+        private static OwlcatToggle FindToggleTemplate(CharGenPortraitPhaseDetailedPCView instance)
+        {
+            // 1. Ищем прямо на экране портрета.
+            OwlcatToggle toggle = instance.GetComponentInChildren<OwlcatToggle>(true);
+            if (toggle != null) return toggle;
+
+            // 2. Поднимаемся к корню той же иерархии/сцены, где лежит сам экран портрета.
+            if (instance.transform.root != null)
+            {
+                toggle = instance.transform.root.GetComponentInChildren<OwlcatToggle>(true);
+                if (toggle != null) return toggle;
+            }
+
+            // 3. Экран с тумблером сейчас может быть вообще не заинстанциирован в сцене
+            // CharGen (например, живёт только в Настройках, которые сейчас не открыты).
+            // Ищем среди ВСЕХ объектов, загруженных в память игры целиком — включая
+            // неактивные и лежащие в других, не связанных с CharGen корнях иерархии.
+            OwlcatToggle[] allToggles = Resources.FindObjectsOfTypeAll<OwlcatToggle>();
+            foreach (var candidate in allToggles)
+            {
+                if (candidate == null) continue;
+                // Отсеиваем "сырые" ассеты, не относящиеся ни к одной загруженной сцене —
+                // шаблон нужен именно из реальной сцены, а не из базы ассетов на диске.
+                if (!candidate.gameObject.scene.IsValid()) continue;
+
+                return candidate;
+            }
+
+            return null;
+        }
+
+        private static void BuildNativeUI(Transform parent, OwlcatToggle toggleTemplate)
         {
             if (_nativePanel != null)
             {
+                _toggleSubscription?.Dispose();
+                _toggleSubscription = null;
                 UnityEngine.Object.Destroy(_nativePanel);
             }
 
             _nativePanel = new GameObject("KitsuneNativeFormSelector", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             _nativePanel.transform.SetParent(parent, false);
 
-            // Поднимаем панель на Y = 250f (над кнопкой "ИЗМЕНИТЬ ПОРТРЕТ")
+            var layoutElement = _nativePanel.AddComponent<LayoutElement>();
+            layoutElement.ignoreLayout = true;
+
             var rect = _nativePanel.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0f);
             rect.anchorMax = new Vector2(0.5f, 0f);
             rect.pivot = new Vector2(0.5f, 0f);
-            rect.anchoredPosition = new Vector2(-150f, 250f); // Сдвиг влево к блоку выборов и вверх
+            rect.anchoredPosition = new Vector2(-150f, 250f);
             rect.sizeDelta = new Vector2(520f, 65f);
 
             var layout = _nativePanel.GetComponent<HorizontalLayoutGroup>();
@@ -86,40 +123,117 @@ namespace KitsunePortrait
             layout.childControlWidth = false;
             layout.childControlHeight = false;
 
-            // Клонируем кнопки-слоты
-            _foxButton = UnityEngine.Object.Instantiate(template, _nativePanel.transform);
-            _foxButton.name = "KitsuneFoxButton";
-            _foxText = _foxButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (toggleTemplate != null)
+            {
+                BuildWithNativeToggle(toggleTemplate);
+                Main.Logger?.Log("[KitsuneUI] Тумблер Лиса/Человек построен из нативного OwlcatToggle.");
+            }
+            else
+            {
+                BuildFallbackToggle();
+                Main.Logger?.Log("[KitsuneUI] Живой OwlcatToggle нигде не найден — построен собственный переключатель (fallback).");
+            }
+        }
 
-            _humanButton = UnityEngine.Object.Instantiate(template, _nativePanel.transform);
-            _humanButton.name = "KitsuneHumanButton";
-            _humanText = _humanButton.GetComponentInChildren<TextMeshProUGUI>();
+        private static void BuildWithNativeToggle(OwlcatToggle toggleTemplate)
+        {
+            _foxText = CreateLabel(_nativePanel.transform, "FoxLabel");
+            _formToggle = UnityEngine.Object.Instantiate(toggleTemplate, _nativePanel.transform);
+            _formToggle.name = "KitsuneFormToggle";
+            _humanText = CreateLabel(_nativePanel.transform, "HumanLabel");
 
-            // Размер карточек слотов
-            var foxRect = _foxButton.GetComponent<RectTransform>();
-            var humanRect = _humanButton.GetComponent<RectTransform>();
-            
-            if (foxRect != null) foxRect.sizeDelta = new Vector2(240f, 60f);
-            if (humanRect != null) humanRect.sizeDelta = new Vector2(240f, 60f);
+            // Тумблер не должен быть частью радио-группы, в которой он был склонирован
+            // (иначе клик по нему мог бы затронуть исходную группу на другом экране).
+            _formToggle.Group = null;
+            _formToggle.Set(CharGenState.CurrentForm == EditingPortraitForm.Human);
 
-            // Настройка кликов
-            _foxButton.OnLeftClick.RemoveAllListeners();
-            _foxButton.OnLeftClick.AddListener(() =>
+            _toggleSubscription = _formToggle.IsOn.Subscribe(isOn =>
+            {
+                CharGenState.CurrentForm = isOn ? EditingPortraitForm.Human : EditingPortraitForm.Fox;
+                UpdateUIState();
+                Main.Logger?.Log($"[KitsuneUI] Активная форма: {(isOn ? "Человек" : "Лиса")}");
+            });
+        }
+
+        // Самодостаточный переключатель без внешних зависимостей: два кликабельных
+        // сегмента на общей подложке. Не претендует на 1:1 копию нативного OwlcatToggle,
+        // но ведёт себя как тумблер (виден только один активный вариант) и не зависит
+        // от того, загружен ли где-то в памяти игры настоящий шаблон.
+        private static void BuildFallbackToggle()
+        {
+            var trackGO = new GameObject("KitsuneToggleTrack", typeof(RectTransform), typeof(Image));
+            trackGO.transform.SetParent(_nativePanel.transform, false);
+            var trackRect = trackGO.GetComponent<RectTransform>();
+            trackRect.sizeDelta = new Vector2(320f, 50f);
+            var trackImage = trackGO.GetComponent<Image>();
+            trackImage.color = new Color(0.08f, 0.08f, 0.08f, 0.85f);
+
+            _fallbackFoxButton = CreateToggleHalf(trackGO.transform, "FoxHalf", new Vector2(0f, 0f), new Vector2(0.5f, 1f), out _fallbackFoxBg, out _foxText);
+            _fallbackHumanButton = CreateToggleHalf(trackGO.transform, "HumanHalf", new Vector2(0.5f, 0f), new Vector2(1f, 1f), out _fallbackHumanBg, out _humanText);
+
+            _fallbackFoxButton.onClick.AddListener(() =>
             {
                 CharGenState.CurrentForm = EditingPortraitForm.Fox;
                 UpdateUIState();
-                Main.Logger?.Log("[KitsuneUI] Активный слот переключен на: ФОРМА ЛИСЫ");
+                Main.Logger?.Log("[KitsuneUI] Активная форма: Лиса");
             });
 
-            _humanButton.OnLeftClick.RemoveAllListeners();
-            _humanButton.OnLeftClick.AddListener(() =>
+            _fallbackHumanButton.onClick.AddListener(() =>
             {
                 CharGenState.CurrentForm = EditingPortraitForm.Human;
                 UpdateUIState();
-                Main.Logger?.Log("[KitsuneUI] Активный слот переключен на: ФОРМА ЧЕЛОВЕКА");
+                Main.Logger?.Log("[KitsuneUI] Активная форма: Человек");
             });
+        }
 
-            Main.Logger?.Log("[KitsuneUI] Слоты выбора портретов успешно построены!");
+        private static Button CreateToggleHalf(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, out Image background, out TextMeshProUGUI label)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            background = go.GetComponent<Image>();
+            background.color = new Color(0f, 0f, 0f, 0f);
+
+            var button = go.GetComponent<Button>();
+            button.targetGraphic = background;
+            button.transition = Selectable.Transition.ColorTint;
+
+            var textGO = new GameObject("Label", typeof(RectTransform));
+            textGO.transform.SetParent(go.transform, false);
+            var textRect = textGO.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            label = textGO.AddComponent<TextMeshProUGUI>();
+            label.richText = true;
+            label.fontSize = 18f;
+            label.alignment = TextAlignmentOptions.Center;
+
+            return button;
+        }
+
+        private static TextMeshProUGUI CreateLabel(Transform parent, string name)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(190f, 60f);
+
+            var text = go.AddComponent<TextMeshProUGUI>();
+            text.richText = true;
+            text.fontSize = 18f;
+            text.alignment = TextAlignmentOptions.Center;
+
+            return text;
         }
 
         public static void UpdateUIState()
@@ -131,45 +245,39 @@ namespace KitsunePortrait
 
             if (!isKitsune) return;
 
-            bool isFoxActive = CharGenState.CurrentForm == EditingPortraitForm.Fox;
+            bool isHumanActive = CharGenState.CurrentForm == EditingPortraitForm.Human;
 
-            string foxPortraitName = !string.IsNullOrEmpty(CharGenState.FoxPortrait) ? CharGenState.FoxPortrait : "не выбран";
-            string humanPortraitName = !string.IsNullOrEmpty(CharGenState.HumanPortrait) ? CharGenState.HumanPortrait : "не выбран";
+            string foxPortraitName = !string.IsNullOrEmpty(Main.SelectedFoxPortrait) ? Main.SelectedFoxPortrait : "не выбран";
+            string humanPortraitName = !string.IsNullOrEmpty(Main.TemporaryHumanPortrait) ? Main.TemporaryHumanPortrait : "не выбран";
 
-            // Отрисовка слота Лисы
             if (_foxText != null)
             {
-                _foxText.lineSpacing = -15f;
-                if (isFoxActive)
-                {
-                    _foxText.text = "<b><color=#E2B053>🦊 ФОРМА ЛИСЫ</color></b>\n" +
-                                    "<size=10><color=#00FF7F>[ НАЗНАЧЕНИЕ... ]</color></size>\n" +
-                                    $"<size=11><color=#FFFFFF>Папка: {foxPortraitName}</color></size>";
-                }
-                else
-                {
-                    _foxText.text = "<b><color=#8C8C8C>🦊 ФОРМА ЛИСЫ</color></b>\n" +
-                                    "<size=10><color=#707070>[ Выбрать слот ]</color></size>\n" +
-                                    $"<size=11><color=#909090>Папка: {foxPortraitName}</color></size>";
-                }
+                _foxText.text = !isHumanActive
+                    ? $"<b><color=#E2B053>🦊 ЛИСА</color></b>\n<size=11><color=#FFFFFF>{foxPortraitName}</color></size>"
+                    : $"<color=#8C8C8C>🦊 Лиса</color>\n<size=11><color=#909090>{foxPortraitName}</color></size>";
             }
 
-            // Отрисовка слота Человека
             if (_humanText != null)
             {
-                _humanText.lineSpacing = -15f;
-                if (!isFoxActive)
-                {
-                    _humanText.text = "<b><color=#E2B053>👤 ФОРМА ЧЕЛОВЕКА</color></b>\n" +
-                                      "<size=10><color=#00FF7F>[ НАЗНАЧЕНИЕ... ]</color></size>\n" +
-                                      $"<size=11><color=#FFFFFF>Папка: {humanPortraitName}</color></size>";
-                }
-                else
-                {
-                    _humanText.text = "<b><color=#8C8C8C>👤 ФОРМА ЧЕЛОВЕКА</color></b>\n" +
-                                      "<size=10><color=#707070>[ Выбрать слот ]</color></size>\n" +
-                                      $"<size=11><color=#909090>Папка: {humanPortraitName}</color></size>";
-                }
+                _humanText.text = isHumanActive
+                    ? $"<b><color=#E2B053>👤 ЧЕЛОВЕК</color></b>\n<size=11><color=#FFFFFF>{humanPortraitName}</color></size>"
+                    : $"<color=#8C8C8C>👤 Человек</color>\n<size=11><color=#909090>{humanPortraitName}</color></size>";
+            }
+
+            // Подсветка активного сегмента — только для fallback-варианта (у нативного
+            // OwlcatToggle подсветка своя, встроенная в его собственный визуал).
+            if (_fallbackFoxBg != null)
+            {
+                _fallbackFoxBg.color = !isHumanActive
+                    ? new Color(0.89f, 0.69f, 0.33f, 0.35f)
+                    : new Color(0f, 0f, 0f, 0f);
+            }
+
+            if (_fallbackHumanBg != null)
+            {
+                _fallbackHumanBg.color = isHumanActive
+                    ? new Color(0.89f, 0.69f, 0.33f, 0.35f)
+                    : new Color(0f, 0f, 0f, 0f);
             }
         }
     }

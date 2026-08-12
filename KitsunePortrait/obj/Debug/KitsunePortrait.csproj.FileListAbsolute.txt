@@ -8,3 +8,5 @@ C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\Kitsun
 C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.dll
 C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.pdb
 C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.sourcelink.json
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\bin\Debug\UniRx.dll
+C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsuneP.0C28CA08.Up2Date

@@ -15,6 +15,9 @@
             <HintPath>$(WOTR_PATH)\Wrath_Data\Managed\Assembly-CSharp.dll</HintPath>
             <Private>False</Private>
         </Reference>
+        <Reference Include="UniRx">
+          <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Pathfinder Second Adventure\Wrath_Data\Managed\UniRx.dll</HintPath>
+        </Reference>
 
         <Reference Include="UnityEngine">
             <HintPath>$(WOTR_PATH)\Wrath_Data\Managed\UnityEngine.dll</HintPath>

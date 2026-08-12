@@ -4,6 +4,8 @@ using HarmonyLib;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Classes;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem;
+using Kingmaker.UI;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases.Portrait;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases.Race;
@@ -23,9 +25,6 @@ namespace KitsunePortrait
     {
         public static bool IsInPortraitPhase;
         public static EditingPortraitForm CurrentForm = EditingPortraitForm.Fox;
-        
-        public static string FoxPortrait;
-        public static string HumanPortrait;
     }
 
     [HarmonyPatch(typeof(CharGenPortraitPhaseVM))]
@@ -40,6 +39,7 @@ namespace KitsunePortrait
             Main.IsKitsuneSelectedInCharGen = false;
             Main.SelectedFoxPortrait = string.Empty;
             Main.TemporaryHumanPortrait = string.Empty;
+            CharGenRaceSelectPatch.ResetSessionState();
 
             KitsunePortraitOverlay.EnsureInstance();
         }
@@ -71,9 +71,15 @@ namespace KitsunePortrait
         }
     }
 
+    // Напоминание в стиле игры: как только выбрана раса Кицунэ, подсказываем игроку
+    // вернуться на вкладку "Портрет", чтобы назначить портрет для человеческой формы.
+    // API подтверждён декомпиляцией: тот же IMessageModalUIHandler, что использует
+    // сама игра (см. CharGenVM.TryWarnToDropLevelupPlan).
     [HarmonyPatch(typeof(CharGenRacePhaseVM), "SelectRaceInMechanic")]
     public static class CharGenRaceSelectPatch
     {
+        private static bool _reminderShownThisSession;
+
         public static void Postfix(BlueprintRace race)
         {
             if (race == null) return;
@@ -84,6 +90,23 @@ namespace KitsunePortrait
 
             Main.IsKitsuneSelectedInCharGen = isKitsune;
             Main.Logger.Log($"[CharGen] Выбрана раса: '{race.name}'. Это Кицунэ? -> {isKitsune}");
+
+            if (isKitsune && !_reminderShownThisSession)
+            {
+                _reminderShownThisSession = true;
+                EventBus.RaiseEvent(delegate(IMessageModalUIHandler h)
+                {
+                    h.HandleOpen(
+                        "Кицунэ умеют менять форму — лиса/человек. Вернитесь на вкладку «Портрет», " +
+                        "чтобы назначить отдельный портрет для человеческой формы.",
+                        MessageModalBase.ModalType.Message);
+                });
+            }
+        }
+
+        public static void ResetSessionState()
+        {
+            _reminderShownThisSession = false;
         }
     }
 
@@ -100,18 +123,18 @@ namespace KitsunePortrait
                 portraitId = portrait.AssetGuidThreadSafe;
             }
 
-            if (Main.IsKitsuneSelectedInCharGen)
+            if (CharGenState.CurrentForm == EditingPortraitForm.Human)
             {
-                if (CharGenState.CurrentForm == EditingPortraitForm.Human)
-                {
-                    Main.TemporaryHumanPortrait = portraitId;
-                    Main.Logger.Log($"[CharGen] Зафиксирован портрет ЧЕЛОВЕКА: '{portraitId}'");
-                    return true;
-                }
-
+                Main.TemporaryHumanPortrait = portraitId;
+                Main.Logger.Log($"[CharGen] Зафиксирован портрет ЧЕЛОВЕКА: '{portraitId}'");
+            }
+            else
+            {
                 Main.SelectedFoxPortrait = portraitId;
                 Main.Logger.Log($"[CharGen] Зафиксирован портрет ЛИСЫ: '{portraitId}'");
             }
+
+            KitsuneCharGenUIPatch.UpdateUIState();
 
             return true;
         }
@@ -289,6 +312,7 @@ namespace KitsunePortrait
                 Main.SelectedFoxPortrait = string.Empty;
                 Main.TemporaryHumanPortrait = string.Empty;
                 CharGenState.IsInPortraitPhase = false;
+                CharGenRaceSelectPatch.ResetSessionState();
             }
             catch (Exception ex)
             {
