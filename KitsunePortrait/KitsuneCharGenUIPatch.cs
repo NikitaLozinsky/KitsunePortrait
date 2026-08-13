@@ -23,6 +23,8 @@ namespace KitsunePortrait
         // Общие для обоих путей: подписи по бокам с тёмной подложкой (как "НАЗАД"/"ДАЛЕЕ")
         private static Image _foxBgImage;
         private static Image _humanBgImage;
+        private static Image _foxThumbnail;
+        private static Image _humanThumbnail;
         private static TextMeshProUGUI _foxText;
         private static TextMeshProUGUI _humanText;
 
@@ -144,7 +146,7 @@ namespace KitsunePortrait
             rect.anchorMin = new Vector2(0.5f, 0f);
             rect.anchorMax = new Vector2(0.5f, 0f);
             rect.pivot = new Vector2(0.5f, 0f); // сразу перезаписывается в RepositionUnderPortrait
-            rect.sizeDelta = new Vector2(540f, 65f);
+            rect.sizeDelta = new Vector2(540f, 150f);
 
             var layout = _nativePanel.GetComponent<HorizontalLayoutGroup>();
             layout.spacing = 12f;
@@ -210,8 +212,8 @@ namespace KitsunePortrait
         private static void BuildWithNativeToggle(OwlcatToggle toggleTemplate, CharGenPortraitPhaseDetailedPCView instance,
             Sprite nativeSprite, TMP_FontAsset font, Material fontMaterial)
         {
-            // Подписи по бокам — с тёмной подложкой, как у "НАЗАД"/"ДАЛЕЕ", а не голый текст.
-            CreateLabelPanel(_nativePanel.transform, "FoxLabel", nativeSprite, font, fontMaterial, out _foxBgImage, out _foxText);
+            // Подписи по бокам — с тёмной подложкой и миниатюрой портрета сверху.
+            CreateLabelPanel(_nativePanel.transform, "FoxLabel", nativeSprite, font, fontMaterial, out _foxBgImage, out _foxThumbnail, out _foxText);
 
             _formToggle = UnityEngine.Object.Instantiate(toggleTemplate, _nativePanel.transform);
             _formToggle.name = "KitsuneFormToggle";
@@ -222,7 +224,7 @@ namespace KitsunePortrait
             // динамический значок текущей формы.
             _toggleCenterIcon = _formToggle.GetComponentInChildren<TextMeshProUGUI>(true);
 
-            CreateLabelPanel(_nativePanel.transform, "HumanLabel", nativeSprite, font, fontMaterial, out _humanBgImage, out _humanText);
+            CreateLabelPanel(_nativePanel.transform, "HumanLabel", nativeSprite, font, fontMaterial, out _humanBgImage, out _humanThumbnail, out _humanText);
 
             _formToggle.Set(CharGenState.CurrentForm == EditingPortraitForm.Human);
 
@@ -234,15 +236,16 @@ namespace KitsunePortrait
             });
         }
 
-        // Подпись формы с тёмной подложкой (стиль нижних кнопок навигации).
+        // Подпись формы с тёмной подложкой (стиль нижних кнопок навигации) + миниатюра
+        // выбранного портрета сверху.
         private static void CreateLabelPanel(Transform parent, string name, Sprite bgSprite,
-            TMP_FontAsset font, Material fontMaterial, out Image bgImage, out TextMeshProUGUI label)
+            TMP_FontAsset font, Material fontMaterial, out Image bgImage, out Image thumbnail, out TextMeshProUGUI label)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Image));
             go.transform.SetParent(parent, false);
 
             var rect = go.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(190f, 58f);
+            rect.sizeDelta = new Vector2(190f, 140f);
 
             bgImage = go.GetComponent<Image>();
             if (bgSprite != null)
@@ -251,12 +254,35 @@ namespace KitsunePortrait
                 bgImage.type = Image.Type.Sliced;
             }
 
+            thumbnail = CreateThumbnail(go.transform);
+
             label = CreateLabel(go.transform, "Label", font, fontMaterial);
             var labelRect = label.GetComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = new Vector2(4f, 4f);
-            labelRect.offsetMax = new Vector2(-4f, -4f);
+            labelRect.anchorMin = new Vector2(0f, 0f);
+            labelRect.anchorMax = new Vector2(1f, 0f);
+            labelRect.pivot = new Vector2(0.5f, 0f);
+            labelRect.sizeDelta = new Vector2(0f, 54f);
+            labelRect.anchoredPosition = new Vector2(0f, 6f);
+        }
+
+        // Квадратная миниатюра портрета, прижатая к верху родительской плашки.
+        private static Image CreateThumbnail(Transform parent)
+        {
+            var go = new GameObject("Thumbnail", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, -8f);
+            rect.sizeDelta = new Vector2(68f, 68f);
+
+            var image = go.GetComponent<Image>();
+            image.preserveAspect = true;
+            image.enabled = false; // включаем, когда появится реальный спрайт
+
+            return image;
         }
 
         // ---------- Путь 2: fallback (сегментированные кнопки) ----------
@@ -270,7 +296,7 @@ namespace KitsunePortrait
             trackGO.transform.SetParent(_nativePanel.transform, false);
 
             var trackRect = trackGO.GetComponent<RectTransform>();
-            trackRect.sizeDelta = new Vector2(360f, 52f);
+            trackRect.sizeDelta = new Vector2(400f, 140f);
 
             var trackImage = trackGO.GetComponent<Image>();
             if (nativeButtonSprite != null)
@@ -284,13 +310,13 @@ namespace KitsunePortrait
                 trackGO.transform, "FoxSegment",
                 new Vector2(0f, 0f), new Vector2(0.5f, 1f), new Vector4(3f, 3f, 1.5f, 3f),
                 buttonTemplate, nativeButtonSprite, nativeFont, nativeFontMaterial,
-                out _foxBgImage, out _foxText);
+                out _foxBgImage, out _foxThumbnail, out _foxText);
 
             _humanButton = CreateSegmentButton(
                 trackGO.transform, "HumanSegment",
                 new Vector2(0.5f, 0f), new Vector2(1f, 1f), new Vector4(1.5f, 3f, 3f, 3f),
                 buttonTemplate, nativeButtonSprite, nativeFont, nativeFontMaterial,
-                out _humanBgImage, out _humanText);
+                out _humanBgImage, out _humanThumbnail, out _humanText);
 
             if (_foxButton != null)
             {
@@ -316,7 +342,7 @@ namespace KitsunePortrait
         private static OwlcatButton CreateSegmentButton(
             Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Vector4 padding,
             OwlcatButton template, Sprite bgSprite, TMP_FontAsset font, Material fontMaterial,
-            out Image bgImage, out TextMeshProUGUI label)
+            out Image bgImage, out Image thumbnail, out TextMeshProUGUI label)
         {
             GameObject go;
             OwlcatButton button;
@@ -355,12 +381,15 @@ namespace KitsunePortrait
                 UnityEngine.Object.Destroy(child.gameObject);
             }
 
+            thumbnail = CreateThumbnail(go.transform);
+
             label = CreateLabel(go.transform, "Label", font, fontMaterial);
             var labelRect = label.GetComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = new Vector2(4f, 4f);
-            labelRect.offsetMax = new Vector2(-4f, -4f);
+            labelRect.anchorMin = new Vector2(0f, 0f);
+            labelRect.anchorMax = new Vector2(1f, 0f);
+            labelRect.pivot = new Vector2(0.5f, 0f);
+            labelRect.sizeDelta = new Vector2(0f, 54f);
+            labelRect.anchoredPosition = new Vector2(0f, 6f);
 
             return button;
         }
@@ -403,18 +432,33 @@ namespace KitsunePortrait
 
             // Активная форма: яркий золотой заголовок + чёткий текст.
             // Неактивная: приглушённый серый, без выделения.
+            // Без эмодзи — по той же причине, что и у центральной иконки тумблера.
             if (_foxText != null)
             {
                 _foxText.text = !isHumanActive
-                    ? $"<b><color=#E2B053>🦊 ЛИСА</color></b>\n<size=11><color=#F0E6D2>{foxPortraitName}</color></size>"
-                    : $"<color=#8A8A8A>🦊 Лиса</color>\n<size=11><color=#6E6E6E>{foxPortraitName}</color></size>";
+                    ? $"<b><color=#E2B053>ЛИСА</color></b>\n<size=11><color=#F0E6D2>{foxPortraitName}</color></size>"
+                    : $"<color=#8A8A8A>Лиса</color>\n<size=11><color=#6E6E6E>{foxPortraitName}</color></size>";
             }
 
             if (_humanText != null)
             {
                 _humanText.text = isHumanActive
-                    ? $"<b><color=#E2B053>👤 ЧЕЛОВЕК</color></b>\n<size=11><color=#F0E6D2>{humanPortraitName}</color></size>"
-                    : $"<color=#8A8A8A>👤 Человек</color>\n<size=11><color=#6E6E6E>{humanPortraitName}</color></size>";
+                    ? $"<b><color=#E2B053>ЧЕЛОВЕК</color></b>\n<size=11><color=#F0E6D2>{humanPortraitName}</color></size>"
+                    : $"<color=#8A8A8A>Человек</color>\n<size=11><color=#6E6E6E>{humanPortraitName}</color></size>";
+            }
+
+            if (_foxThumbnail != null)
+            {
+                Sprite sprite = PortraitManager.GetSmallPortraitSprite(Main.SelectedFoxPortrait);
+                _foxThumbnail.sprite = sprite;
+                _foxThumbnail.enabled = sprite != null;
+            }
+
+            if (_humanThumbnail != null)
+            {
+                Sprite sprite = PortraitManager.GetSmallPortraitSprite(Main.TemporaryHumanPortrait);
+                _humanThumbnail.sprite = sprite;
+                _humanThumbnail.enabled = sprite != null;
             }
 
             if (_foxBgImage != null)

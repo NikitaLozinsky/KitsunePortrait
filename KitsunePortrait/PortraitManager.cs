@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.Reflection;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
+using UnityEngine;
 
 namespace KitsunePortrait
 {
@@ -36,38 +36,42 @@ namespace KitsunePortrait
         }
 
         /// <summary>
-        /// Безопасно извлекает CustomId или GUID блупринта из PortraitData через System.Reflection.
+        /// Извлекает CustomId кастомного портрета. Для ванильных портретов вернёт null:
+        /// PortraitData не хранит обратной ссылки на свой BlueprintPortrait (подтверждено
+        /// декомпиляцией) — реконструировать GUID из голого PortraitData невозможно.
+        /// Основной путь сохранения (CharGenPortraitSelectPatch) эту проблему не имеет —
+        /// там ID берётся с самого BlueprintPortrait, до того как он превращается в
+        /// PortraitData. Эта функция нужна только как fallback для старых сохранений.
         /// </summary>
         public static string GetPortraitId(PortraitData portraitData)
         {
-            if (portraitData == null) return null;
+            return portraitData?.CustomId;
+        }
 
-            // 1. Если портрет кастомный (из папки Portraits) — берём CustomId
-            if (!string.IsNullOrEmpty(portraitData.CustomId))
-                return portraitData.CustomId;
+        /// <summary>
+        /// Резолвит сохранённый ID портрета (CustomId кастомного или GUID ванильного
+        /// блупринта) обратно в маленький превью-спрайт для UI. Синхронно — PortraitData
+        /// сам решает, грузить ли с диска (кастомный) или взять готовый спрайт (ванильный).
+        /// </summary>
+        public static Sprite GetSmallPortraitSprite(string portraitId)
+        {
+            if (string.IsNullOrEmpty(portraitId)) return null;
 
-            // 2. Если портрет ванильный — читаем приватное поле m_Blueprint
-            var field = typeof(PortraitData).GetField("m_Blueprint", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                     ?? typeof(PortraitData).GetField("Blueprint", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-
-            if (field != null)
+            BlueprintPortrait blueprintPortrait = ResourcesLibrary.TryGetBlueprint<BlueprintPortrait>(portraitId);
+            if (blueprintPortrait?.Data != null)
             {
-                object value = field.GetValue(portraitData);
-                if (value != null)
-                {
-                    if (value is BlueprintPortrait bp)
-                        return bp.AssetGuidThreadSafe;
-
-                    if (value is BlueprintReference<BlueprintPortrait> bpRef)
-                        return bpRef.Guid.ToString();
-
-                    var nameProp = value.GetType().GetProperty("name")?.GetValue(value) as string;
-                    if (!string.IsNullOrEmpty(nameProp))
-                        return nameProp;
-                }
+                return blueprintPortrait.Data.SmallPortrait;
             }
 
-            return null;
+            // Не нашли такой блупринт в игре — считаем, что это кастомный портрет из
+            // папки Portraits, и грузим его тем же путём, что и ApplyPortrait ниже.
+            var customPortraitData = new PortraitData(portraitId);
+            if (customPortraitData.IsCustom)
+            {
+                customPortraitData.EnsureImages();
+            }
+
+            return customPortraitData.SmallPortrait;
         }
 
         public static void UpdatePortrait(UnitEntityData unit)
