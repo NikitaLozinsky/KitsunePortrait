@@ -6,6 +6,7 @@ using Kingmaker.Blueprints.Classes;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.UI;
+using Kingmaker.UI.MVVM._VM.CharGen;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases.Portrait;
 using Kingmaker.UI.MVVM._VM.CharGen.Phases.Race;
@@ -25,6 +26,12 @@ namespace KitsunePortrait
     {
         public static bool IsInPortraitPhase;
         public static EditingPortraitForm CurrentForm = EditingPortraitForm.Fox;
+
+        // Ссылки на инстансы этой сессии CharGen — нужны, чтобы программно переключить
+        // активную фазу мастера (см. CharGenRaceSelectPatch) тем же способом, что и клик
+        // по вкладке в родной навигации: CharGenVM.CurrentPhaseVM.Value = ...
+        public static CharGenVM CachedCharGenVM;
+        public static CharGenPortraitPhaseVM CachedPortraitPhaseVM;
     }
 
     [HarmonyPatch(typeof(CharGenPortraitPhaseVM))]
@@ -32,9 +39,10 @@ namespace KitsunePortrait
     {
         [HarmonyPatch(MethodType.Constructor, typeof(LevelUpController))]
         [HarmonyPostfix]
-        public static void OnConstruct()
+        public static void OnConstruct(CharGenPortraitPhaseVM __instance)
         {
             CharGenState.CurrentForm = EditingPortraitForm.Fox;
+            CharGenState.CachedPortraitPhaseVM = __instance;
 
             Main.IsKitsuneSelectedInCharGen = false;
             Main.SelectedFoxPortrait = string.Empty;
@@ -42,6 +50,19 @@ namespace KitsunePortrait
             CharGenRaceSelectPatch.ResetSessionState();
 
             KitsunePortraitOverlay.EnsureInstance();
+        }
+    }
+
+    // Захватываем сам CharGenVM сессии — понадобится, чтобы программно переключить
+    // активную фазу мастера (CharGenRaceSelectPatch), а не просто просить игрока
+    // вернуться на вкладку портрета руками.
+    [HarmonyPatch(typeof(CharGenVM))]
+    [HarmonyPatch(MethodType.Constructor, typeof(LevelUpController), typeof(Action), typeof(Action), typeof(LevelUpConfig))]
+    public static class CharGenVMCapturePatch
+    {
+        public static void Postfix(CharGenVM __instance)
+        {
+            CharGenState.CachedCharGenVM = __instance;
         }
     }
 
@@ -71,10 +92,10 @@ namespace KitsunePortrait
         }
     }
 
-    // Напоминание в стиле игры: как только выбрана раса Кицунэ, подсказываем игроку
-    // вернуться на вкладку "Портрет", чтобы назначить портрет для человеческой формы.
-    // API подтверждён декомпиляцией: тот же IMessageModalUIHandler, что использует
-    // сама игра (см. CharGenVM.TryWarnToDropLevelupPlan).
+    // Как только выбрана раса Кицунэ — переключаем игрока на уже существующую вкладку
+    // "Портрет" тем же способом, каким это делает сама игра при клике по вкладке в
+    // навигации (CharGenVM.CurrentPhaseVM.Value = ...). Никакого отдельного попапа с
+    // сеткой портретов не строим — весь пикер остаётся полностью родным.
     [HarmonyPatch(typeof(CharGenRacePhaseVM), "SelectRaceInMechanic")]
     public static class CharGenRaceSelectPatch
     {
@@ -94,12 +115,33 @@ namespace KitsunePortrait
             if (isKitsune && !_reminderShownThisSession)
             {
                 _reminderShownThisSession = true;
+
+                // Сразу выставляем "Человек" активной формой — игрок попадёт на экран
+                // портрета, где тумблер уже готов принимать клик по нужному слоту.
+                CharGenState.CurrentForm = EditingPortraitForm.Human;
+
+                bool navigated = false;
+                if (CharGenState.CachedCharGenVM != null && CharGenState.CachedPortraitPhaseVM != null)
+                {
+                    CharGenState.CachedCharGenVM.CurrentPhaseVM.Value = CharGenState.CachedPortraitPhaseVM;
+                    navigated = true;
+                    Main.Logger.Log("[CharGen] Автоматически переключились на вкладку 'Портрет'.");
+                }
+                else
+                {
+                    Main.Logger.Warning("[CharGen] Не удалось автопереключиться на вкладку 'Портрет' — " +
+                                         "нет сохранённой ссылки на CharGenVM или CharGenPortraitPhaseVM.");
+                }
+
+                string message = navigated
+                    ? "Кицунэ умеют менять форму — лиса/человек. Вы перенесены на вкладку «Портрет», " +
+                      "чтобы назначить портрет для человеческой формы."
+                    : "Кицунэ умеют менять форму — лиса/человек. Вернитесь на вкладку «Портрет», " +
+                      "чтобы назначить отдельный портрет для человеческой формы.";
+
                 EventBus.RaiseEvent(delegate(IMessageModalUIHandler h)
                 {
-                    h.HandleOpen(
-                        "Кицунэ умеют менять форму — лиса/человек. Вернитесь на вкладку «Портрет», " +
-                        "чтобы назначить отдельный портрет для человеческой формы.",
-                        MessageModalBase.ModalType.Message);
+                    h.HandleOpen(message, MessageModalBase.ModalType.Message);
                 });
             }
         }
@@ -312,6 +354,8 @@ namespace KitsunePortrait
                 Main.SelectedFoxPortrait = string.Empty;
                 Main.TemporaryHumanPortrait = string.Empty;
                 CharGenState.IsInPortraitPhase = false;
+                CharGenState.CachedCharGenVM = null;
+                CharGenState.CachedPortraitPhaseVM = null;
                 CharGenRaceSelectPatch.ResetSessionState();
             }
             catch (Exception ex)
