@@ -92,10 +92,12 @@ namespace KitsunePortrait
         }
     }
 
-    // Как только выбрана раса Кицунэ — переключаем игрока на уже существующую вкладку
-    // "Портрет" тем же способом, каким это делает сама игра при клике по вкладке в
-    // навигации (CharGenVM.CurrentPhaseVM.Value = ...). Никакого отдельного попапа с
-    // сеткой портретов не строим — весь пикер остаётся полностью родным.
+    // Как только выбрана раса Кицунэ — предлагаем игроку перейти на вкладку "Портрет"
+    // диалоговым окном с явным согласием, а не молча телепортируем: если раса выбрана
+    // случайно, внезапный переход на другой экран — плохой UX. Переход происходит
+    // только по нажатию "Принять" — тем же способом, каким это делает сама игра при
+    // клике по вкладке в навигации (CharGenVM.CurrentPhaseVM.Value = ...). Никакого
+    // отдельного попапа с сеткой портретов не строим — весь пикер остаётся родным.
     [HarmonyPatch(typeof(CharGenRacePhaseVM), "SelectRaceInMechanic")]
     public static class CharGenRaceSelectPatch
     {
@@ -116,33 +118,43 @@ namespace KitsunePortrait
             {
                 _reminderShownThisSession = true;
 
-                // Сразу выставляем "Человек" активной формой — игрок попадёт на экран
-                // портрета, где тумблер уже готов принимать клик по нужному слоту.
-                CharGenState.CurrentForm = EditingPortraitForm.Human;
-
-                bool navigated = false;
-                if (CharGenState.CachedCharGenVM != null && CharGenState.CachedPortraitPhaseVM != null)
-                {
-                    CharGenState.CachedCharGenVM.CurrentPhaseVM.Value = CharGenState.CachedPortraitPhaseVM;
-                    navigated = true;
-                    Main.Logger.Log("[CharGen] Автоматически переключились на вкладку 'Портрет'.");
-                }
-                else
-                {
-                    Main.Logger.Warning("[CharGen] Не удалось автопереключиться на вкладку 'Портрет' — " +
-                                         "нет сохранённой ссылки на CharGenVM или CharGenPortraitPhaseVM.");
-                }
-
-                string message = navigated
-                    ? "Кицунэ умеют менять форму — лиса/человек. Вы перенесены на вкладку «Портрет», " +
-                      "чтобы назначить портрет для человеческой формы."
-                    : "Кицунэ умеют менять форму — лиса/человек. Вернитесь на вкладку «Портрет», " +
-                      "чтобы назначить отдельный портрет для человеческой формы.";
-
                 EventBus.RaiseEvent(delegate(IMessageModalUIHandler h)
                 {
-                    h.HandleOpen(message, MessageModalBase.ModalType.Message);
+                    h.HandleOpen(
+                        messageText: "Кицунэ умеют менять форму — лиса/человек. Перейти на вкладку «Портрет», " +
+                                     "чтобы назначить портрет для человеческой формы?",
+                        modalType: MessageModalBase.ModalType.Dialog,
+                        onClose: delegate(MessageModalBase.ButtonType button)
+                        {
+                            if (button == MessageModalBase.ButtonType.Yes)
+                            {
+                                NavigateToPortraitPhase();
+                            }
+                            else
+                            {
+                                Main.Logger.Log("[CharGen] Игрок отклонил переход на вкладку 'Портрет' (закрыл окно/отменил).");
+                            }
+                        },
+                        yesLabel: "Принять");
                 });
+            }
+        }
+
+        private static void NavigateToPortraitPhase()
+        {
+            // Сразу выставляем "Человек" активной формой — игрок попадёт на экран
+            // портрета, где тумблер уже готов принимать клик по нужному слоту.
+            CharGenState.CurrentForm = EditingPortraitForm.Human;
+
+            if (CharGenState.CachedCharGenVM != null && CharGenState.CachedPortraitPhaseVM != null)
+            {
+                CharGenState.CachedCharGenVM.CurrentPhaseVM.Value = CharGenState.CachedPortraitPhaseVM;
+                Main.Logger.Log("[CharGen] Переключились на вкладку 'Портрет' по согласию игрока.");
+            }
+            else
+            {
+                Main.Logger.Warning("[CharGen] Не удалось переключиться на вкладку 'Портрет' — " +
+                                     "нет сохранённой ссылки на CharGenVM или CharGenPortraitPhaseVM.");
             }
         }
 
