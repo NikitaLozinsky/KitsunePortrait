@@ -11,38 +11,32 @@ namespace KitsunePortrait
         [HarmonyPrefix]
         public static bool UpdatePortraitInLevelupController_Prefix(BlueprintPortrait portrait)
         {
-            if (!Main.IsKitsuneSelectedInCharGen)
-                return true;
-
             if (portrait == null)
                 return true;
 
-            // Безопасно получаем имя портрета: если есть CustomId (кастомный) — берем его, иначе системное portrait.name
-            string portraitName = !string.IsNullOrEmpty(portrait.Data?.CustomId) 
-                ? portrait.Data.CustomId 
-                : portrait.name;
+            string portraitName = !string.IsNullOrEmpty(portrait.Data?.CustomId)
+                ? portrait.Data.CustomId
+                : portrait.AssetGuidThreadSafe;
 
-            // 1. РЕЖИМ ЧЕЛОВЕКА (Только просмотр)
+            // 1. ДО выбора расы ИЛИ в режиме Лисы — ВСЕГДА сохраняем портрет как форму Лисы
+            if (!Main.IsKitsuneSelectedInCharGen || CharGenState.CurrentForm == EditingPortraitForm.Fox)
+            {
+                Main.SelectedFoxPortrait = portraitName;
+                KitsuneCharGenUIPatch.UpdateUIState();
+
+                Main.Logger?.Log($"[Kitsune] Зафиксирован портрет Лисы: {portraitName}");
+                return true; // Разрешаем родную запись в контроллер персонажа
+            }
+
+            // 2. В режиме Человека (только когда Кицунэ уже выбрана и активирован переключатель)
             if (CharGenState.CurrentForm == EditingPortraitForm.Human)
             {
                 Main.TemporaryHumanPortrait = portraitName;
                 KitsuneCharGenUIPatch.UpdateUIState();
 
-                Main.Logger?.Log($"[Kitsune] Выбран человеческий портрет (просмотр): {portraitName}");
+                Main.Logger?.Log($"[Kitsune] Выбран человеческий портрет: {portraitName}");
 
-                // Блокируем запись человеческого портрета в контроллер создания персонажа
-                return false;
-            }
-
-            // 2. РЕЖИМ ЛИСЫ (Основной портрет)
-            if (CharGenState.CurrentForm == EditingPortraitForm.Fox)
-            {
-                Main.SelectedFoxPortrait = portraitName;
-                KitsuneCharGenUIPatch.UpdateUIState();
-
-                Main.Logger?.Log($"[Kitsune] Выбран портрет Лисы (активный): {portraitName}");
-
-                return true;
+                return false; // Блокируем запись человеческого портрета в игровой контроллер
             }
 
             return true;
