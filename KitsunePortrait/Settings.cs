@@ -22,18 +22,11 @@ namespace KitsunePortrait
 
     public class Settings : UnityModManager.ModSettings
     {
-        // Координаты оверлея
         public float OverlayX = 10f;
         public float OverlayY = 10f;
 
-        // Язык интерфейса мода (код локали, напр. "ruRU", "enGB", "zhCN").
-        // Null/пусто = автоопределение по языку игры (см. Localization.ResolveActiveLocale).
-        public string Language;
-
-        // Список для XML-сериализации
         public List<CharacterPortraitEntry> PortraitEntries = new List<CharacterPortraitEntry>();
 
-        // Основной словарь для работы в коде (игнорируется при сериализации)
         [XmlIgnore]
         public Dictionary<string, PortraitPair> CharacterPortraits = new Dictionary<string, PortraitPair>();
 

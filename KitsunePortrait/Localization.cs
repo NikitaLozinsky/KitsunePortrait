@@ -8,12 +8,6 @@ using Newtonsoft.Json.Linq;
 
 namespace KitsunePortrait
 {
-    /// <summary>
-    /// Одна строка локализации. Помимо Key/ProcessTemplates объект может содержать
-    /// произвольное число языковых колонок ("ruRU", "enGB", "zhCN", ...). Они не
-    /// объявлены явными полями, чтобы добавление нового языка не требовало правок
-    /// кода — новая колонка в JSON подхватывается автоматически через JsonExtensionData.
-    /// </summary>
     [Serializable]
     public class LocalizedEntry
     {
@@ -30,46 +24,32 @@ namespace KitsunePortrait
         public List<LocalizedEntry> LocalizedStrings = new List<LocalizedEntry>();
     }
 
-    /// <summary>
-    /// Загружает Locales/localization.json и отдаёт локализованные строки по ключу.
-    /// Цепочка фолбэков: текущий язык -> enGB -> ruRU -> сам ключ (чтобы отсутствующий
-    /// перевод был явно виден в интерфейсе, а не приводил к пустой строке или краху).
-    /// </summary>
     public static class Localization
     {
         private const string FileName = "localization.json";
-        public const string DefaultLocale = "ruRU";
-        private const string SecondaryFallbackLocale = "enGB";
+        public const string FallbackLocale = "enGB";
+        public const string SecondaryFallbackLocale = "ruRU";
 
         private static readonly Dictionary<string, LocalizedEntry> Entries = new Dictionary<string, LocalizedEntry>();
         private static List<string> _availableLocalesCache;
 
         /// <summary>
-        /// Текущий язык интерфейса мода. Вычисляется "на лету" при каждом обращении:
-        /// 1) если игрок явно выбрал язык в ModUI (Settings.Language) — используется он;
-        /// 2) иначе берётся текущий язык самой игры (Kingmaker.Localization.LocalizationManager.CurrentLocale),
-        ///    если для него есть перевод в файле;
-        /// 3) иначе — DefaultLocale ("ruRU").
-        /// Живое вычисление (а не разовое кэширование при загрузке мода) означает, что
-        /// если игрок сменит язык игры в настройках прямо во время сессии — тексты мода
-        /// подхватят это без перезапуска.
+        /// Возвращает текущий язык игры. Вычисляется «на лету»:
+        /// 1) Берется текущий язык игры (Kingmaker.Localization.LocalizationManager.CurrentLocale).
+        /// 2) Если для него есть перевод в файле локализации — используется он.
+        /// 3) Если такого языка в моде нет — переключается на английский ("enGB").
         /// </summary>
         public static string CurrentLocale
         {
             get
             {
-                if (!string.IsNullOrEmpty(Main.Settings?.Language))
-                {
-                    return Main.Settings.Language;
-                }
-
                 string gameLocale = TryGetGameLocale();
                 if (!string.IsNullOrEmpty(gameLocale) && GetAvailableLocales().Contains(gameLocale))
                 {
                     return gameLocale;
                 }
 
-                return DefaultLocale;
+                return FallbackLocale;
             }
         }
 
@@ -80,24 +60,15 @@ namespace KitsunePortrait
 
             try
             {
-                // 1. Основной путь: Mods/KitsunePortrait/Locales/localization.json
-                string path = Path.Combine(Main.ModEntry.Path, "Locales", "localization.json");
-
-                // 2. Резервный путь (корень): Mods/KitsunePortrait/localization.json
+                string path = Path.Combine(Main.ModEntry.Path, "Locales", FileName);
                 if (!File.Exists(path))
                 {
-                    path = Path.Combine(Main.ModEntry.Path, "localization.json");
-                }
-
-                // 3. Резервный путь с большой буквы: Mods/KitsunePortrait/Localization.json
-                if (!File.Exists(path))
-                {
-                    path = Path.Combine(Main.ModEntry.Path, "Localization.json");
+                    path = Path.Combine(Main.ModEntry.Path, FileName);
                 }
 
                 if (!File.Exists(path))
                 {
-                    Main.Logger?.Error($"[Localization] Файл локализации не найден по путям в Locales/ или корне!");
+                    Main.Logger?.Error($"[Localization] Файл локализации не найден в Locales/ или корне: {path}");
                     return;
                 }
 
@@ -113,7 +84,7 @@ namespace KitsunePortrait
                     }
                 }
 
-                Main.Logger?.Log($"[Localization] Успешно загружено строк: {Entries.Count}");
+                Main.Logger?.Log($"[Localization] Загружено строк: {Entries.Count}. Доступные языки в моде: {string.Join(", ", GetAvailableLocales())}");
             }
             catch (Exception ex)
             {
@@ -121,13 +92,6 @@ namespace KitsunePortrait
             }
         }
 
-        /// <summary>
-        /// Подтверждено декомпиляцией Assembly-CSharp: публичное статическое свойство
-        /// Kingmaker.Localization.LocalizationManager.CurrentLocale (enum Locale, значения
-        /// вида enGB/deDE/frFR/ruRU/zhCN/esES/ptBR/itIT — те же коды, что и колонки в JSON).
-        /// Всё равно оборачиваем в try/catch: свойство читает SettingsRoot.Game.Main.Localization,
-        /// который в теории может быть ещё не готов на самых ранних этапах загрузки игры.
-        /// </summary>
         private static string TryGetGameLocale()
         {
             try
@@ -138,18 +102,6 @@ namespace KitsunePortrait
             {
                 return null;
             }
-        }
-
-        /// <summary>
-        /// Явно переключить язык интерфейса мода (например, из ModUI) и сохранить выбор.
-        /// Передайте null/пустую строку, чтобы вернуться к автоопределению по языку игры.
-        /// </summary>
-        public static void SetLanguage(string locale)
-        {
-            if (Main.Settings == null) return;
-
-            Main.Settings.Language = string.IsNullOrEmpty(locale) ? null : locale;
-            Main.Settings.Save(Main.ModEntry);
         }
 
         public static List<string> GetAvailableLocales()
@@ -169,12 +121,6 @@ namespace KitsunePortrait
             return list;
         }
 
-        /// <summary>
-        /// Возвращает локализованную строку по ключу. Если args не пустой — строка
-        /// прогоняется через string.Format (плейсхолдеры {0}, {1}, ...).
-        /// Если ключ не найден ни в одном языке — возвращает сам ключ, чтобы недостающий
-        /// перевод было легко заметить и найти в файле.
-        /// </summary>
         public static string Get(string key, params object[] args)
         {
             if (string.IsNullOrEmpty(key)) return string.Empty;
@@ -184,9 +130,10 @@ namespace KitsunePortrait
                 return key;
             }
 
+            // Цепочка поиска: Текущий язык игры -> enGB -> ruRU -> Ключ
             string text = ResolveText(entry, CurrentLocale)
+                          ?? ResolveText(entry, FallbackLocale)
                           ?? ResolveText(entry, SecondaryFallbackLocale)
-                          ?? ResolveText(entry, DefaultLocale)
                           ?? key;
 
             if (args == null || args.Length == 0) return text;
