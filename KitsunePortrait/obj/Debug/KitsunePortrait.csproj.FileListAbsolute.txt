@@ -10,3 +10,13 @@ C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\Kitsun
 C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.sourcelink.json
 C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\bin\Debug\UniRx.dll
 C:\Users\Иуда\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsuneP.0C28CA08.Up2Date
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\bin\Debug\KitsunePortrait.dll
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\bin\Debug\KitsunePortrait.pdb
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.csproj.AssemblyReference.cache
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.AssemblyInfoInputs.cache
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.AssemblyInfo.cs
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.csproj.CoreCompileInputs.cache
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.sourcelink.json
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.dll
+C:\Users\decop\RiderProjects\KitsunePortrait\KitsunePortrait\obj\Debug\KitsunePortrait.pdb

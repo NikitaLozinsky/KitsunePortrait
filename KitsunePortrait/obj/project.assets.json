@@ -8,19 +8,19 @@
     ".NETFramework,Version=v4.8": []
   },
   "packageFolders": {
-    "C:\\Users\\Иуда\\.nuget\\packages\\": {}
+    "C:\\Users\\decop\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Иуда\\RiderProjects\\KitsunePortrait\\KitsunePortrait\\KitsunePortrait.csproj",
+      "projectUniqueName": "C:\\Users\\decop\\RiderProjects\\KitsunePortrait\\KitsunePortrait\\KitsunePortrait.csproj",
       "projectName": "KitsunePortrait",
-      "projectPath": "C:\\Users\\Иуда\\RiderProjects\\KitsunePortrait\\KitsunePortrait\\KitsunePortrait.csproj",
-      "packagesPath": "C:\\Users\\Иуда\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Иуда\\RiderProjects\\KitsunePortrait\\KitsunePortrait\\obj\\",
+      "projectPath": "C:\\Users\\decop\\RiderProjects\\KitsunePortrait\\KitsunePortrait\\KitsunePortrait.csproj",
+      "packagesPath": "C:\\Users\\decop\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\decop\\RiderProjects\\KitsunePortrait\\KitsunePortrait\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\Иуда\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\decop\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net48"
@@ -30,6 +30,7 @@
       },
       "frameworks": {
         "net48": {
+          "framework": "net48",
           "targetAlias": "net48",
           "projectReferences": {}
         }
@@ -47,8 +48,9 @@
     },
     "frameworks": {
       "net48": {
+        "framework": "net48",
         "targetAlias": "net48",
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.424\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.319\\RuntimeIdentifierGraph.json"
       }
     }
   }

@@ -1,0 +1,108 @@
+﻿{
+  "LocalizedStrings": [
+    {
+      "Key": "Kitsune.FormReminder.Message",
+      "SimpleName": "KitsunePortrait.CharGen.FormReminder.Message",
+      "ProcessTemplates": false,
+      "ruRU": "Кицунэ умеют менять форму — лиса/человек. Перейти на вкладку «Портрет», чтобы назначить портрет для человеческой формы?",
+      "enGB": "Kitsune can change their form — fox and human. Go to the Portrait tab to set a portrait for the human form?",
+      "zhCN": "狐妖能够变换形态——狐狸与人类。是否前往“肖像”页面为人类形态设置一张肖像？"
+    },
+    {
+      "Key": "Kitsune.FormReminder.YesButton",
+      "SimpleName": "KitsunePortrait.CharGen.FormReminder.YesButton",
+      "ProcessTemplates": false,
+      "ruRU": "Принять",
+      "enGB": "Accept",
+      "zhCN": "确定"
+    },
+    {
+      "Key": "Kitsune.Form.Fox",
+      "SimpleName": "KitsunePortrait.Common.FormFox",
+      "ProcessTemplates": false,
+      "ruRU": "Лиса",
+      "enGB": "Fox",
+      "zhCN": "狐狸"
+    },
+    {
+      "Key": "Kitsune.Form.Human",
+      "SimpleName": "KitsunePortrait.Common.FormHuman",
+      "ProcessTemplates": false,
+      "ruRU": "Человек",
+      "enGB": "Human",
+      "zhCN": "人类"
+    },
+    {
+      "Key": "Kitsune.Portrait.NotSelected",
+      "SimpleName": "KitsunePortrait.Common.NotSelected",
+      "ProcessTemplates": false,
+      "ruRU": "не выбран",
+      "enGB": "not selected",
+      "zhCN": "未选择"
+    },
+    {
+      "Key": "Kitsune.ModUI.Title",
+      "SimpleName": "KitsunePortrait.ModUI.Title",
+      "ProcessTemplates": false,
+      "ruRU": "<b>Kitsune Portrait Switcher — Управление портретами</b>",
+      "enGB": "<b>Kitsune Portrait Switcher — Portrait Manager</b>",
+      "zhCN": "<b>狐妖肖像切换器 — 肖像管理</b>"
+    },
+    {
+      "Key": "Kitsune.ModUI.LoadSaveMessage",
+      "SimpleName": "KitsunePortrait.ModUI.LoadSaveMessage",
+      "ProcessTemplates": false,
+      "ruRU": "Загрузите сохранение для управления портретами.",
+      "enGB": "Load a save to manage portraits.",
+      "zhCN": "请读取存档以管理肖像。"
+    },
+    {
+      "Key": "Kitsune.ModUI.FallbackLine",
+      "SimpleName": "KitsunePortrait.ModUI.FallbackLine",
+      "ProcessTemplates": false,
+      "ruRU": "Резервный портрет человека по умолчанию: <b>{0}</b>",
+      "enGB": "Default fallback human portrait: <b>{0}</b>",
+      "zhCN": "默认的备用人类肖像：<b>{0}</b>"
+    },
+    {
+      "Key": "Kitsune.ModUI.CharacterFormLine",
+      "SimpleName": "KitsunePortrait.ModUI.CharacterFormLine",
+      "ProcessTemplates": false,
+      "ruRU": "<b>{0}</b> | Форма в игре: {1}",
+      "enGB": "<b>{0}</b> | Current form: {1}",
+      "zhCN": "<b>{0}</b> | 当前形态：{1}"
+    },
+    {
+      "Key": "Kitsune.ModUI.FoxPortraitLabel",
+      "SimpleName": "KitsunePortrait.ModUI.FoxPortraitLabel",
+      "ProcessTemplates": false,
+      "ruRU": "Портрет Лисы (ID / GUID):",
+      "enGB": "Fox portrait (ID / GUID):",
+      "zhCN": "狐狸肖像（ID / GUID）："
+    },
+    {
+      "Key": "Kitsune.ModUI.HumanPortraitLabel",
+      "SimpleName": "KitsunePortrait.ModUI.HumanPortraitLabel",
+      "ProcessTemplates": false,
+      "ruRU": "Портрет Человека (ID / GUID):",
+      "enGB": "Human portrait (ID / GUID):",
+      "zhCN": "人类肖像（ID / GUID）："
+    },
+    {
+      "Key": "Kitsune.ModUI.ApplyButton",
+      "SimpleName": "KitsunePortrait.ModUI.ApplyButton",
+      "ProcessTemplates": false,
+      "ruRU": "Применить изменения",
+      "enGB": "Apply changes",
+      "zhCN": "应用更改"
+    },
+    {
+      "Key": "Kitsune.ModUI.LanguageLabel",
+      "SimpleName": "KitsunePortrait.ModUI.LanguageLabel",
+      "ProcessTemplates": false,
+      "ruRU": "Язык мода:",
+      "enGB": "Mod language:",
+      "zhCN": "模组语言："
+    }
+  ]
+}

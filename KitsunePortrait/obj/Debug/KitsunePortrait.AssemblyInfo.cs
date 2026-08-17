@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KitsunePortrait")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+058b0106ac2907ee87bffc1202d399b8444daa4e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f1fcd216cdfe83cf9d869182621b2c6732a18329")]
 [assembly: System.Reflection.AssemblyProductAttribute("KitsunePortrait")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KitsunePortrait")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

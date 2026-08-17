@@ -70,10 +70,16 @@
             <HintPath>$(WOTR_PATH)\Wrath_Data\Managed\UniRx.dll</HintPath>
             <Private>False</Private>
         </Reference>
+
+        <Reference Include="Newtonsoft.Json">
+            <HintPath>$(WOTR_PATH)\Wrath_Data\Managed\Newtonsoft.Json.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
     </ItemGroup>
 
     <ItemGroup>
         <AssetFiles Include="Assets\**\*.*" />
+        <LocaleFiles Include="Locales\**\*.*" />
     </ItemGroup>
 
     <Target Name="DeployMod" AfterTargets="Build">
@@ -86,6 +92,7 @@
         <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(ModFolder)" />
         <Copy SourceFiles="Info.json" DestinationFolder="$(ModFolder)" />
         <Copy SourceFiles="@(AssetFiles)" DestinationFolder="$(ModFolder)\Assets\%(RecursiveDir)" />
-        <Message Importance="High" Text="Мод успешно скопирован (включая Assets) и готов к запуску!" />
+        <Copy SourceFiles="@(LocaleFiles)" DestinationFolder="$(ModFolder)\Locales\%(RecursiveDir)" />
+        <Message Importance="High" Text="Мод успешно скопирован (включая Assets и Locales) и готов к запуску!" />
     </Target>
 </Project>

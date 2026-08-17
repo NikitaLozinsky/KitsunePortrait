@@ -144,8 +144,7 @@ namespace KitsunePortrait
                     EventBus.RaiseEvent(delegate(IMessageModalUIHandler h)
                     {
                         h.HandleOpen(
-                            messageText: "Кицунэ умеют менять форму — лиса/человек. Перейти на вкладку «Портрет», " +
-                                         "чтобы назначить портрет для человеческой формы?",
+                            messageText: Localization.Get("Kitsune.FormReminder.Message"),
                             modalType: MessageModalBase.ModalType.Dialog,
                             onClose: delegate(MessageModalBase.ButtonType button)
                             {
@@ -154,7 +153,7 @@ namespace KitsunePortrait
                                     NavigateToPortraitPhase();
                                 }
                             },
-                            yesLabel: "Принять");
+                            yesLabel: Localization.Get("Kitsune.FormReminder.YesButton"));
                     });
                 }
             }

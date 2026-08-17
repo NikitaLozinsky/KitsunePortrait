@@ -13,14 +13,17 @@ namespace KitsunePortrait
 
         public static void OnGUI(UnityModManager.ModEntry modEntry)
         {
+            DrawLanguageSwitcher();
+            GUILayout.Space(6);
+
             if (Game.Instance?.Player == null)
             {
-                GUILayout.Label("Загрузите сохранение для управления портретами.");
+                GUILayout.Label(Localization.Get("Kitsune.ModUI.LoadSaveMessage"));
                 return;
             }
 
-            GUILayout.Label("<b>Kitsune Portrait Switcher — Управление портретами</b>");
-            GUILayout.Label($"Резервный портрет человека по умолчанию: <b>{PortraitManager.FallbackHumanPortraitId}</b>");
+            GUILayout.Label(Localization.Get("Kitsune.ModUI.Title"));
+            GUILayout.Label(Localization.Get("Kitsune.ModUI.FallbackLine", PortraitManager.FallbackHumanPortraitId));
             GUILayout.Space(10);
 
             var party = Game.Instance.Player.Party;
@@ -47,26 +50,29 @@ namespace KitsunePortrait
                 if (!InputBuffers.ContainsKey(humanKey)) InputBuffers[humanKey] = pair.HumanPortrait ?? "";
 
                 GUILayout.BeginVertical(GUI.skin.box);
-                
-                GUILayout.Label($"<b>{unit.CharacterName}</b> | Форма в игре: {(inHuman ? "<color=yellow>Человек</color>" : "<color=orange>Лиса</color>")}");
+
+                string formLabel = inHuman
+                    ? $"<color=yellow>{Localization.Get("Kitsune.Form.Human")}</color>"
+                    : $"<color=orange>{Localization.Get("Kitsune.Form.Fox")}</color>";
+                GUILayout.Label(Localization.Get("Kitsune.ModUI.CharacterFormLine", unit.CharacterName, formLabel));
                 GUILayout.Space(5);
 
                 // Поле ввода для Лисы
                 GUILayout.BeginHorizontal();
-                GUILayout.Label("Портрет Лисы (ID / GUID):", GUILayout.Width(180));
+                GUILayout.Label(Localization.Get("Kitsune.ModUI.FoxPortraitLabel"), GUILayout.Width(180));
                 InputBuffers[foxKey] = GUILayout.TextField(InputBuffers[foxKey], GUILayout.Width(220));
                 GUILayout.EndHorizontal();
 
                 // Поле ввода для Человека
                 GUILayout.BeginHorizontal();
-                GUILayout.Label("Портрет Человека (ID / GUID):", GUILayout.Width(180));
+                GUILayout.Label(Localization.Get("Kitsune.ModUI.HumanPortraitLabel"), GUILayout.Width(180));
                 InputBuffers[humanKey] = GUILayout.TextField(InputBuffers[humanKey], GUILayout.Width(220));
                 GUILayout.EndHorizontal();
 
                 GUILayout.Space(5);
 
                 // Кнопка применения
-                if (GUILayout.Button("Применить изменения", GUILayout.Width(180), GUILayout.Height(25)))
+                if (GUILayout.Button(Localization.Get("Kitsune.ModUI.ApplyButton"), GUILayout.Width(180), GUILayout.Height(25)))
                 {
                     pair.FoxPortrait = InputBuffers[foxKey].Trim();
                     pair.HumanPortrait = InputBuffers[humanKey].Trim();
@@ -81,6 +87,30 @@ namespace KitsunePortrait
                 GUILayout.EndVertical();
                 GUILayout.Space(8);
             }
+        }
+
+        private static void DrawLanguageSwitcher()
+        {
+            var locales = Localization.GetAvailableLocales();
+            if (locales.Count <= 1) return;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(Localization.Get("Kitsune.ModUI.LanguageLabel"), GUILayout.Width(140));
+
+            foreach (string locale in locales)
+            {
+                bool isActive = locale == Localization.CurrentLocale;
+                GUI.enabled = !isActive;
+
+                if (GUILayout.Button(locale, GUILayout.Width(70)))
+                {
+                    Localization.SetLanguage(locale);
+                }
+
+                GUI.enabled = true;
+            }
+
+            GUILayout.EndHorizontal();
         }
     }
 }

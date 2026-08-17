@@ -332,6 +332,33 @@ namespace KitsunePortrait
             return btn;
         }
 
+        // ---------- Отключение мода ----------
+
+        /// <summary>
+        /// Уничтожает панель и сбрасывает кэшированные ссылки на компоненты.
+        /// Вызывается при выключении мода (Main.OnToggle(false)), чтобы при повторном
+        /// включении без перезапуска игры не оставался "осиротевший" GameObject
+        /// с патчами, которые уже сняты Harmony.
+        /// </summary>
+        public static void Cleanup()
+        {
+            if (_nativePanel != null)
+            {
+                UnityEngine.Object.Destroy(_nativePanel);
+            }
+
+            _nativePanel = null;
+            _foxThumbnail = null;
+            _humanThumbnail = null;
+            _dualFrameImage = null;
+            _foxSelectionFrame = null;
+            _humanSelectionFrame = null;
+            _foxText = null;
+            _humanText = null;
+            _foxButton = null;
+            _humanButton = null;
+        }
+
         // ---------- Обновление состояния ----------
 
         public static void UpdateUIState()
@@ -345,8 +372,9 @@ namespace KitsunePortrait
 
             bool isHumanActive = CharGenState.CurrentForm == EditingPortraitForm.Human;
 
-            string foxPortraitName = !string.IsNullOrEmpty(Main.SelectedFoxPortrait) ? Main.SelectedFoxPortrait : "не выбран";
-            string humanPortraitName = !string.IsNullOrEmpty(Main.TemporaryHumanPortrait) ? Main.TemporaryHumanPortrait : "не выбран";
+            string notSelectedLabel = Localization.Get("Kitsune.Portrait.NotSelected");
+            string foxPortraitName = !string.IsNullOrEmpty(Main.SelectedFoxPortrait) ? Main.SelectedFoxPortrait : notSelectedLabel;
+            string humanPortraitName = !string.IsNullOrEmpty(Main.TemporaryHumanPortrait) ? Main.TemporaryHumanPortrait : notSelectedLabel;
 
             // 1. Отображение активной рамки-указателя (Слой 3)
             if (_foxSelectionFrame != null) _foxSelectionFrame.enabled = !isHumanActive;
@@ -358,18 +386,21 @@ namespace KitsunePortrait
             string inactiveTitleColor = "#9E968D"; // Светло-серый
             string inactiveSubColor = "#736C65";   // Приглушенный серый
 
+            string foxLabel = Localization.Get("Kitsune.Form.Fox");
+            string humanLabel = Localization.Get("Kitsune.Form.Human");
+
             if (_foxText != null)
             {
                 _foxText.text = !isHumanActive
-                    ? $"<b><color={activeTitleColor}>ЛИСА</color></b>\n<size=11><color={activeSubColor}>{foxPortraitName}</color></size>"
-                    : $"<color={inactiveTitleColor}>Лиса</color>\n<size=11><color={inactiveSubColor}>{foxPortraitName}</color></size>";
+                    ? $"<b><color={activeTitleColor}>{foxLabel.ToUpperInvariant()}</color></b>\n<size=11><color={activeSubColor}>{foxPortraitName}</color></size>"
+                    : $"<color={inactiveTitleColor}>{foxLabel}</color>\n<size=11><color={inactiveSubColor}>{foxPortraitName}</color></size>";
             }
 
             if (_humanText != null)
             {
                 _humanText.text = isHumanActive
-                    ? $"<b><color={activeTitleColor}>ЧЕЛОВЕК</color></b>\n<size=11><color={activeSubColor}>{humanPortraitName}</color></size>"
-                    : $"<color={inactiveTitleColor}>Человек</color>\n<size=11><color={inactiveSubColor}>{humanPortraitName}</color></size>";
+                    ? $"<b><color={activeTitleColor}>{humanLabel.ToUpperInvariant()}</color></b>\n<size=11><color={activeSubColor}>{humanPortraitName}</color></size>"
+                    : $"<color={inactiveTitleColor}>{humanLabel}</color>\n<size=11><color={inactiveSubColor}>{humanPortraitName}</color></size>";
             }
 
             // 3. Загрузка портретов (Слой 1)

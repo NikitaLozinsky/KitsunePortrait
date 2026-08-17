@@ -27,8 +27,10 @@ namespace KitsunePortrait
             Logger = modEntry.Logger;
 
             Settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
-            Settings.OnAfterLoad(); 
-            
+            Settings.OnAfterLoad();
+
+            Localization.Load();
+
             modEntry.OnToggle = OnToggle;
             modEntry.OnGUI = OnGUI;
             modEntry.OnSaveGUI = OnSaveGUI;
@@ -63,6 +65,10 @@ namespace KitsunePortrait
                     }
 
                     _harmonyInstance?.UnpatchAll(modEntry.Info.Id);
+
+                    // Убираем кастомную панель CharGen UI, чтобы не оставлять "осиротевший"
+                    // GameObject в сцене при повторном включении мода без перезапуска игры.
+                    KitsuneCharGenUIPatch.Cleanup();
 
                     IsKitsuneSelectedInCharGen = false;
                     SelectedFoxPortrait = string.Empty;
