@@ -97,12 +97,108 @@
       "zhCN": "应用更改"
     },
     {
+      "Key": "Kitsune.ModUI.BrowseButton",
+      "SimpleName": "KitsunePortrait.ModUI.BrowseButton",
+      "ProcessTemplates": false,
+      "ruRU": "Обзор",
+      "enGB": "Browse",
+      "zhCN": "浏览"
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserTitle",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserTitle",
+      "ProcessTemplates": false,
+      "ruRU": "Выбор кастомного портрета:",
+      "enGB": "Select Custom Portrait:",
+      "zhCN": "选择自定义肖像："
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserRefresh",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserRefresh",
+      "ProcessTemplates": false,
+      "ruRU": "Обновить",
+      "enGB": "Refresh",
+      "zhCN": "刷新"
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserEmpty",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserEmpty",
+      "ProcessTemplates": false,
+      "ruRU": "Папка Portraits пуста или не найдена.",
+      "enGB": "Portraits folder is empty or missing.",
+      "zhCN": "Portraits 文件夹为空或未找到。"
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserSelectButton",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserSelectButton",
+      "ProcessTemplates": false,
+      "ruRU": "Выбрать",
+      "enGB": "Select",
+      "zhCN": "选择"
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowseButton",
+      "SimpleName": "KitsunePortrait.ModUI.BrowseButton",
+      "ProcessTemplates": false,
+      "ruRU": "Обзор",
+      "enGB": "Browse",
+      "zhCN": "浏览"
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserTitle",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserTitle",
+      "ProcessTemplates": false,
+      "ruRU": "Выбор кастомного портрета:",
+      "enGB": "Select Custom Portrait:",
+      "zhCN": "选择自定义肖像："
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserRefresh",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserRefresh",
+      "ProcessTemplates": false,
+      "ruRU": "Обновить",
+      "enGB": "Refresh",
+      "zhCN": "刷新"
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserEmpty",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserEmpty",
+      "ProcessTemplates": false,
+      "ruRU": "Папка Portraits пуста или не найдена.",
+      "enGB": "Portraits folder is empty or missing.",
+      "zhCN": "Portraits 文件夹为空或未找到。"
+    },
+    {
+      "Key": "Kitsune.ModUI.BrowserSelectButton",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserSelectButton",
+      "ProcessTemplates": false,
+      "ruRU": "Выбрать",
+      "enGB": "Select",
+      "zhCN": "选择"
+    },
+    {
       "Key": "Kitsune.ModUI.LanguageLabel",
       "SimpleName": "KitsunePortrait.ModUI.LanguageLabel",
       "ProcessTemplates": false,
       "ruRU": "Язык мода:",
       "enGB": "Mod language:",
       "zhCN": "模组语言："
+    },
+    {
+      "Key": "Kitsune.CommitWarning.NoHumanPortrait",
+      "SimpleName": "KitsunePortrait.CharGen.CommitWarning.NoHumanPortrait",
+      "ProcessTemplates": false,
+      "ruRU": "Для персонажа «{0}» не был назначен отдельный портрет человеческой формы — будет использован портрет по умолчанию. Изменить его можно в любой момент через меню Unity Mod Manager (вкладка Kitsune Portrait Switcher).",
+      "enGB": "No separate human-form portrait was assigned for '{0}' — a default portrait will be used. You can change it any time from the Unity Mod Manager menu (Kitsune Portrait Switcher tab).",
+      "zhCN": "尚未为「{0}」设置单独的人类形态肖像，将使用默认肖像。你可以随时在 Unity Mod Manager 菜单（狐妖肖像切换器页面）中修改它。"
+    },
+    {
+      "Key": "Kitsune.CommitWarning.OkButton",
+      "SimpleName": "KitsunePortrait.CharGen.CommitWarning.OkButton",
+      "ProcessTemplates": false,
+      "ruRU": "Понятно",
+      "enGB": "Got it",
+      "zhCN": "知道了"
     }
   ]
 }

@@ -70,6 +70,10 @@ namespace KitsunePortrait
                     // GameObject в сцене при повторном включении мода без перезапуска игры.
                     KitsuneCharGenUIPatch.Cleanup();
 
+                    // Сбрасываем рантайм-кэш оригинальных лисьих портретов (см. комментарий
+                    // в PortraitManager.ClearRuntimeCaches) — некритично, но чисто.
+                    PortraitManager.ClearRuntimeCaches();
+
                     IsKitsuneSelectedInCharGen = false;
                     SelectedFoxPortrait = string.Empty;
                     TemporaryHumanPortrait = string.Empty;

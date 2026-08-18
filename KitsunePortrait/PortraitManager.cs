@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem;
 using UnityEngine;
 
 namespace KitsunePortrait
@@ -34,25 +35,22 @@ namespace KitsunePortrait
             }
             return false;
         }
+        
+        public static string GetPortraitId(UnitEntityData unit)
+        {
+            if (unit?.UISettings == null) return null;
 
-        /// <summary>
-        /// Извлекает CustomId кастомного портрета. Для ванильных портретов вернёт null:
-        /// PortraitData не хранит обратной ссылки на свой BlueprintPortrait (подтверждено
-        /// декомпиляцией) — реконструировать GUID из голого PortraitData невозможно.
-        /// Основной путь сохранения (CharGenPortraitSelectPatch) эту проблему не имеет —
-        /// там ID берётся с самого BlueprintPortrait, до того как он превращается в
-        /// PortraitData. Эта функция нужна только как fallback для старых сохранений.
-        /// </summary>
+            if (unit.UISettings.PortraitBlueprint != null)
+                return unit.UISettings.PortraitBlueprint.AssetGuidThreadSafe;
+
+            return unit.UISettings.Portrait?.CustomId;
+        }
+
         public static string GetPortraitId(PortraitData portraitData)
         {
             return portraitData?.CustomId;
         }
-
-        /// <summary>
-        /// Резолвит сохранённый ID портрета (CustomId кастомного или GUID ванильного
-        /// блупринта) обратно в маленький превью-спрайт для UI. Синхронно — PortraitData
-        /// сам решает, грузить ли с диска (кастомный) или взять готовый спрайт (ванильный).
-        /// </summary>
+        
         public static Sprite GetSmallPortraitSprite(string portraitId)
         {
             if (string.IsNullOrEmpty(portraitId)) return null;
@@ -90,7 +88,7 @@ namespace KitsunePortrait
                 // Запоминаем текущий (лисий) портрет для старых сохранений
                 if (!OriginalFoxPortraits.ContainsKey(unitId) && unit.UISettings?.Portrait != null)
                 {
-                    string currentPortraitId = GetPortraitId(unit.UISettings.Portrait);
+                    string currentPortraitId = GetPortraitId(unit);
                     if (!string.IsNullOrEmpty(currentPortraitId))
                     {
                         OriginalFoxPortraits[unitId] = currentPortraitId;
@@ -124,7 +122,7 @@ namespace KitsunePortrait
             var currentPortrait = unit.UISettings.Portrait;
             if (currentPortrait != null)
             {
-                string currentId = GetPortraitId(currentPortrait);
+                string currentId = GetPortraitId(unit);
                 if (currentId == portraitId)
                     return;
             }
@@ -136,12 +134,19 @@ namespace KitsunePortrait
             if (portraitBp != null)
             {
                 unit.UISettings.SetPortrait(portraitBp);
+                EventBus.RaiseEvent((IUnitPortraitChangedHandler h) => h.HandlePortraitChanged(unit));
                 return;
             }
 
             // 2. Если блупринт игры не найден — применяем как кастомный портрет из папки
             var customPortraitData = new PortraitData(portraitId);
             unit.UISettings.SetPortrait(customPortraitData);
+            EventBus.RaiseEvent((IUnitPortraitChangedHandler h) => h.HandlePortraitChanged(unit));
+        }
+
+        public static void ClearRuntimeCaches()
+        {
+            OriginalFoxPortraits.Clear();
         }
     }
 }

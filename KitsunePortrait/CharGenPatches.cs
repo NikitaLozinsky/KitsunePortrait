@@ -43,22 +43,40 @@ namespace KitsunePortrait
             CharGenState.CachedPortraitPhaseVM = __instance;
             CharGenState.CachedLevelUpController = levelUpController;
 
-            Main.IsKitsuneSelectedInCharGen = false;
-            
-            // Захватываем начальный портрет, если он уже предвыбран игрой
-            var currentPortrait = levelUpController?.Unit?.UISettings?.PortraitBlueprint;
-            if (currentPortrait != null)
+            UnitEntityData unit = levelUpController?.Unit;
+            string unitId = unit?.UniqueId;
+            bool isCurrentlyKitsune = PortraitManager.IsKitsune(unit);
+
+            // Если юнит СЕЙЧАС (на момент открытия вкладки портрета) уже Кицунэ и для него
+            // есть сохранённая пара портретов — считаем сессию продолжением редактирования
+            // существующего персонажа (например, повторный экран портрета при повышении
+            // мифического уровня), а не первым созданием.
+            if (isCurrentlyKitsune && !string.IsNullOrEmpty(unitId) && Main.Settings.CharacterPortraits.TryGetValue(unitId, out PortraitPair existingPair))
             {
-                Main.SelectedFoxPortrait = !string.IsNullOrEmpty(currentPortrait.Data?.CustomId)
-                    ? currentPortrait.Data.CustomId
-                    : currentPortrait.AssetGuidThreadSafe;
+                Main.IsKitsuneSelectedInCharGen = true;
+                Main.SelectedFoxPortrait = existingPair.FoxPortrait ?? string.Empty;
+                Main.TemporaryHumanPortrait = existingPair.HumanPortrait ?? string.Empty;
             }
             else
             {
-                Main.SelectedFoxPortrait = string.Empty;
+                Main.IsKitsuneSelectedInCharGen = false;
+
+                // Захватываем начальный портрет, если он уже предвыбран игрой
+                var currentPortrait = unit?.UISettings?.PortraitBlueprint;
+                if (currentPortrait != null)
+                {
+                    Main.SelectedFoxPortrait = !string.IsNullOrEmpty(currentPortrait.Data?.CustomId)
+                        ? currentPortrait.Data.CustomId
+                        : currentPortrait.AssetGuidThreadSafe;
+                }
+                else
+                {
+                    Main.SelectedFoxPortrait = string.Empty;
+                }
+
+                Main.TemporaryHumanPortrait = string.Empty;
             }
 
-            Main.TemporaryHumanPortrait = string.Empty;
             CharGenRaceSelectPatch.ResetSessionState();
         }
     }
@@ -185,11 +203,8 @@ namespace KitsunePortrait
             {
                 if (__instance?.Unit == null) return;
 
-                var mode = __instance.State?.Mode;
-                if (mode != LevelUpState.CharBuildMode.CharGen && mode != LevelUpState.CharBuildMode.Respec)
-                    return;
-
                 UnitEntityData unit = __instance.Unit;
+                var mode = __instance.State?.Mode;
 
                 bool isKitsune = Main.IsKitsuneSelectedInCharGen ||
                                  (unit.Progression?.Race != null && unit.Progression.Race.AssetGuidThreadSafe == Guids.KitsuneRace);
@@ -198,30 +213,82 @@ namespace KitsunePortrait
                 {
                     string unitId = unit.UniqueId;
 
-                    if (!Main.Settings.CharacterPortraits.ContainsKey(unitId))
+                    if (!Main.Settings.CharacterPortraits.TryGetValue(unitId, out PortraitPair pair))
                     {
-                        Main.Settings.CharacterPortraits[unitId] = new PortraitPair();
+                        pair = new PortraitPair();
+                        Main.Settings.CharacterPortraits[unitId] = pair;
                     }
 
-                    if (!string.IsNullOrEmpty(Main.SelectedFoxPortrait))
-                    {
-                        Main.Settings.CharacterPortraits[unitId].FoxPortrait = Main.SelectedFoxPortrait;
+                    bool changed = false;
 
-                        BlueprintPortrait foxBp = ResourcesLibrary.TryGetBlueprint<BlueprintPortrait>(Main.SelectedFoxPortrait);
-                        if (foxBp != null && unit.UISettings != null)
+                    // Захватываем новый портрет, если игрок выбрал его при повышении мифического уровня
+                    // 1. Применяем портреты, выбранные во вкладках мода
+                    if (!string.IsNullOrEmpty(Main.SelectedFoxPortrait) && Main.SelectedFoxPortrait != pair.FoxPortrait)
+                    {
+                        pair.FoxPortrait = Main.SelectedFoxPortrait;
+                        changed = true;
+                    }
+
+                    bool humanExplicitlyPicked = !string.IsNullOrEmpty(Main.TemporaryHumanPortrait)
+                                                  && Main.TemporaryHumanPortrait != CharGenState.DefaultHumanPlaceholderId;
+
+                    if (humanExplicitlyPicked && Main.TemporaryHumanPortrait != pair.HumanPortrait)
+                    {
+                        pair.HumanPortrait = Main.TemporaryHumanPortrait;
+                        changed = true;
+                    }
+
+                    // 2. Захватываем финальный портрет (например, мифический) 
+                    // и применяем строго к той форме, вкладка которой была открыта
+                    string activePortraitId = PortraitManager.GetPortraitId(unit);
+                    if (!string.IsNullOrEmpty(activePortraitId))
+                    {
+                        if (CharGenState.CurrentForm == EditingPortraitForm.Human)
                         {
-                            unit.UISettings.SetPortrait(foxBp);
+                            if (pair.HumanPortrait != activePortraitId)
+                            {
+                                pair.HumanPortrait = activePortraitId;
+                                changed = true;
+                            }
+                        }
+                        else
+                        {
+                            if (pair.FoxPortrait != activePortraitId)
+                            {
+                                pair.FoxPortrait = activePortraitId;
+                                changed = true;
+                            }
                         }
                     }
 
-                    if (string.IsNullOrEmpty(Main.TemporaryHumanPortrait))
+                    // 3. Фолбэк для пустой формы человека
+                    if (string.IsNullOrEmpty(pair.HumanPortrait))
                     {
-                        Main.TemporaryHumanPortrait = CharGenState.DefaultHumanPlaceholderId;
+                        pair.HumanPortrait = CharGenState.DefaultHumanPlaceholderId;
+                        changed = true;
                     }
-                    Main.Settings.CharacterPortraits[unitId].HumanPortrait = Main.TemporaryHumanPortrait;
 
-                    Main.Settings.Save(Main.ModEntry);
-                    Main.Logger.Log($"[CharGen] УСПЕШНО СОХРАНЕНО: {unit.CharacterName} | Лиса: '{Main.Settings.CharacterPortraits[unitId].FoxPortrait}' | Человек: '{Main.Settings.CharacterPortraits[unitId].HumanPortrait}'");
+                    if (changed)
+                    {
+                        Main.Settings.Save(Main.ModEntry);
+                        Main.Logger.Log($"[CharGen] Сохранено: {unit.CharacterName} | Лиса: '{pair.FoxPortrait}' | Человек: '{pair.HumanPortrait}' | Mode: {mode}");
+                    }
+
+                    // Принудительно заставляем мод обновить портрет под текущую форму
+                    PortraitManager.UpdatePortrait(unit);
+
+                    bool isCreationFlow = mode == LevelUpState.CharBuildMode.CharGen || mode == LevelUpState.CharBuildMode.Respec;
+                    if (isCreationFlow && pair.HumanPortrait == CharGenState.DefaultHumanPlaceholderId)
+                    {
+                        EventBus.RaiseEvent(delegate(IMessageModalUIHandler h)
+                        {
+                            h.HandleOpen(
+                                messageText: Localization.Get("Kitsune.CommitWarning.NoHumanPortrait", unit.CharacterName),
+                                modalType: MessageModalBase.ModalType.Dialog,
+                                onClose: delegate(MessageModalBase.ButtonType button) { },
+                                yesLabel: Localization.Get("Kitsune.CommitWarning.OkButton"));
+                        });
+                    }
                 }
 
                 Main.IsKitsuneSelectedInCharGen = false;
