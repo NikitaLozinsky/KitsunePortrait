@@ -24,7 +24,6 @@
         },
         "frameworks": {
           "net48": {
-            "framework": "net48",
             "targetAlias": "net48",
             "projectReferences": {}
           }
@@ -42,7 +41,6 @@
       },
       "frameworks": {
         "net48": {
-          "framework": "net48",
           "targetAlias": "net48",
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.319\\RuntimeIdentifierGraph.json"
         }

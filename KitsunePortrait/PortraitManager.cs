@@ -20,11 +20,6 @@ namespace KitsunePortrait
             return unit.Progression.Race.AssetGuidThreadSafe == Guids.KitsuneRace;
         }
 
-        public static bool IsNenio(UnitEntityData unit)
-        {
-            return unit?.Blueprint?.AssetGuidThreadSafe == Guids.NenioBlueprint;
-        }
-
         public static bool IsInHumanForm(UnitEntityData unit)
         {
             if (unit?.Buffs == null) return false;
@@ -80,8 +75,6 @@ namespace KitsunePortrait
             bool inHumanForm = IsInHumanForm(unit);
 
             Main.Settings.CharacterPortraits.TryGetValue(unitId, out PortraitPair savedPair);
-
-            Main.Logger?.Log($"[KitsunePortrait] Проверка формы для {unit.CharacterName}. Человек: {inHumanForm}");
 
             if (inHumanForm)
             {

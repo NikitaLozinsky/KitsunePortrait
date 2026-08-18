@@ -25,6 +25,8 @@ namespace KitsunePortrait
         public float OverlayX = 10f;
         public float OverlayY = 10f;
 
+        public int PortraitBrowserPageSize = 20;
+
         public List<CharacterPortraitEntry> PortraitEntries = new List<CharacterPortraitEntry>();
 
         [XmlIgnore]

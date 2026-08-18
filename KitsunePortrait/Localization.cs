@@ -26,7 +26,7 @@ namespace KitsunePortrait
 
     public static class Localization
     {
-        private const string FileName = "localization.json";
+        private const string FileName = "Localization.json";
         public const string FallbackLocale = "enGB";
         public const string SecondaryFallbackLocale = "ruRU";
 

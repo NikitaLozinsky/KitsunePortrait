@@ -39,9 +39,26 @@ namespace KitsunePortrait
         [HarmonyPostfix]
         public static void OnConstruct(CharGenPortraitPhaseVM __instance, LevelUpController levelUpController)
         {
-            CharGenState.CurrentForm = EditingPortraitForm.Fox;
+            // CharGenMythicPortraitPhaseVM (экран портрета на 9-м мифическом уровне) наследуется
+            // от CharGenPortraitPhaseVM и использует ЭТОТ ЖЕ конструктор базового класса — то есть
+            // в рамках ОДНОЙ сессии LevelUpController (например, респек, где мастер переходит с
+            // обычной вкладки портрета на вкладку мифического портрета) этот патч может сработать
+            // несколько раз. Если LevelUpController тот же, что и в прошлый раз — это продолжение
+            // уже идущей сессии, и НЕЛЬЗЯ повторно затирать Main.SelectedFoxPortrait/
+            // TemporaryHumanPortrait сохранёнными (старыми) данными из настроек — иначе только что
+            // сделанный игроком выбор на предыдущей вкладке этой же сессии теряется и на Commit
+            // сохраняются старые значения из прошлого визита в мастер.
+            bool isSameSession = ReferenceEquals(CharGenState.CachedLevelUpController, levelUpController);
+
             CharGenState.CachedPortraitPhaseVM = __instance;
             CharGenState.CachedLevelUpController = levelUpController;
+
+            if (isSameSession)
+            {
+                return;
+            }
+
+            CharGenState.CurrentForm = EditingPortraitForm.Fox;
 
             UnitEntityData unit = levelUpController?.Unit;
             string unitId = unit?.UniqueId;
@@ -238,26 +255,19 @@ namespace KitsunePortrait
                         changed = true;
                     }
 
-                    // 2. Захватываем финальный портрет (например, мифический) 
-                    // и применяем строго к той форме, вкладка которой была открыта
-                    string activePortraitId = PortraitManager.GetPortraitId(unit);
-                    if (!string.IsNullOrEmpty(activePortraitId))
+                    // 2. Захватываем финальный портрет (например, мифический), если игра
+                    // применила его в обход перехвата — но только для формы Лисы. Выбор
+                    // формы Человека всегда блокируется в KitsunePortraitSelectionPatch
+                    // (return false) и поэтому никогда не попадает в unit.UISettings — если
+                    // читать его отсюда для формы Человека, вместо человеческого портрета
+                    // сюда всегда попадает последний реально применённый портрет лисы.
+                    if (CharGenState.CurrentForm == EditingPortraitForm.Fox)
                     {
-                        if (CharGenState.CurrentForm == EditingPortraitForm.Human)
+                        string activePortraitId = PortraitManager.GetPortraitId(unit);
+                        if (!string.IsNullOrEmpty(activePortraitId) && pair.FoxPortrait != activePortraitId)
                         {
-                            if (pair.HumanPortrait != activePortraitId)
-                            {
-                                pair.HumanPortrait = activePortraitId;
-                                changed = true;
-                            }
-                        }
-                        else
-                        {
-                            if (pair.FoxPortrait != activePortraitId)
-                            {
-                                pair.FoxPortrait = activePortraitId;
-                                changed = true;
-                            }
+                            pair.FoxPortrait = activePortraitId;
+                            changed = true;
                         }
                     }
 

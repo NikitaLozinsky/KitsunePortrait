@@ -11,11 +11,31 @@ namespace KitsunePortrait
 {
     public static class ModUI
     {
-        private const int PreviewSize = 40;
+        private const int PreviewWidth = 46;
+        private const int PreviewHeight = 64;
         private const int PreviewCacheCap = 200;
-        private const int BrowserThumbWidth = 90;
-        private const int BrowserThumbHeight = 120;
+        private const int BrowserThumbWidth = 100;
+        private const int BrowserThumbHeight = 140;
+        private const int BrowserCellPadding = 12;
+        // Резерв под вертикальный скроллбар галереи — вычитается из измеренной ширины
+        // контейнера перед расчётом числа колонок, чтобы сетка не переполнялась по горизонтали.
+        private const float BrowserScrollbarAllowance = 24f;
         private const float BrowserHeight = 320f;
+        private const int MinPageSize = 4;
+        private const int MaxPageSize = 60;
+
+        // Измеренная на предыдущем кадре (Repaint) ширина контейнера галереи — используется
+        // для адаптивного числа колонок. Обновляется каждый кадр через width-probe, так что
+        // подстраивается под реальную ширину окна UMM в реальном времени (лаг в 1 кадр,
+        // незаметный глазу и являющийся стандартным приёмом для IMGUI).
+        private static float _measuredBrowserWidth = 400f;
+
+        // Сколько ещё не закэшированных превью можно декодировать за один вызов OnGUI.
+        // Ограничивает пиковую нагрузку одного кадра — при большом количестве кастомных
+        // портретов на странице они "доливаются" на протяжении нескольких кадров вместо
+        // одной фриз-паузы при открытии галереи.
+        private const int MaxPreviewDecodesPerFrame = 4;
+        private static int _previewDecodesThisFrame;
 
         private static readonly Dictionary<string, string> InputBuffers = new Dictionary<string, string>();
 
@@ -32,8 +52,14 @@ namespace KitsunePortrait
         // при первом открытии галереи за сессию, обновляется по кнопке.
         private static List<string> _customPortraitFolders;
 
+        // Текущая страница галереи (0-based). Размер страницы хранится в Main.Settings и
+        // регулируется слайдером прямо в окне мода.
+        private static int _browserPage;
+
         public static void OnGUI(UnityModManager.ModEntry modEntry)
         {
+            _previewDecodesThisFrame = 0;
+
             if (Game.Instance?.Player == null)
             {
                 GUILayout.Label(Localization.Get("Kitsune.ModUI.LoadSaveMessage"));
@@ -118,6 +144,7 @@ namespace KitsunePortrait
                 else
                 {
                     _browserOpenForKey = bufferKey;
+                    _browserPage = 0;
                     EnsureCustomPortraitFoldersLoaded(forceRefresh: false);
                 }
             }
@@ -155,14 +182,41 @@ namespace KitsunePortrait
             }
             else
             {
+                DrawPageSizeSlider();
+
+                int pageSize = Mathf.Clamp(Main.Settings.PortraitBrowserPageSize, MinPageSize, MaxPageSize);
+                int totalItems = _customPortraitFolders.Count;
+                int totalPages = Mathf.Max(1, Mathf.CeilToInt(totalItems / (float)pageSize));
+                _browserPage = Mathf.Clamp(_browserPage, 0, totalPages - 1);
+
+                DrawPageNav(totalPages);
+
+                // Width-probe: невидимый элемент на всю доступную ширину контейнера. На событии
+                // Repaint (когда Unity уже посчитала финальный layout) его итоговая ширина и есть
+                // текущая ширина окна UMM в месте отрисовки галереи — на Layout-событии это
+                // значение ещё не финализировано, поэтому читаем только на Repaint.
+                Rect widthProbeRect = GUILayoutUtility.GetRect(1f, 1f, GUILayout.ExpandWidth(true), GUILayout.Height(1f));
+                if (Event.current.type == EventType.Repaint)
+                {
+                    _measuredBrowserWidth = widthProbeRect.width;
+                }
+
+                int cellWidth = BrowserThumbWidth + BrowserCellPadding;
+                float contentWidth = Mathf.Max(cellWidth, _measuredBrowserWidth - BrowserScrollbarAllowance);
+                int maxCols = Mathf.Max(1, Mathf.FloorToInt(contentWidth / cellWidth));
+
                 _browserScrollPos = GUILayout.BeginScrollView(_browserScrollPos, GUILayout.Height(BrowserHeight));
 
-                int maxCols = 4;
                 int col = 0;
 
+                int startIndex = _browserPage * pageSize;
+                int endIndex = Mathf.Min(startIndex + pageSize, totalItems);
+
                 GUILayout.BeginHorizontal();
-                foreach (string folderName in _customPortraitFolders)
+                for (int i = startIndex; i < endIndex; i++)
                 {
+                    string folderName = _customPortraitFolders[i];
+
                     if (col >= maxCols)
                     {
                         GUILayout.EndHorizontal();
@@ -170,8 +224,8 @@ namespace KitsunePortrait
                         col = 0;
                     }
 
-                    GUILayout.BeginVertical(GUI.skin.box, GUILayout.Width(BrowserThumbWidth + 12));
-                    
+                    GUILayout.BeginVertical(GUI.skin.box, GUILayout.Width(BrowserThumbWidth + BrowserCellPadding));
+
                     DrawThumbnail(folderName);
 
                     var labelStyle = new GUIStyle(GUI.skin.label)
@@ -194,18 +248,91 @@ namespace KitsunePortrait
                 GUILayout.EndHorizontal();
 
                 GUILayout.EndScrollView();
+
+                DrawPageNav(totalPages);
             }
 
             GUILayout.EndVertical();
+        }
+
+        /// <summary>
+        /// Слайдер количества портретов на странице (Main.Settings.PortraitBrowserPageSize).
+        /// Меняется в реальном времени; сохраняется на диск только когда значение реально
+        /// изменилось, чтобы не писать файл настроек на каждый кадр перетаскивания слайдера.
+        /// </summary>
+        private static void DrawPageSizeSlider()
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(Localization.Get("Kitsune.ModUI.BrowserPageSizeLabel", Main.Settings.PortraitBrowserPageSize), GUILayout.Width(140));
+            float sliderValue = GUILayout.HorizontalSlider(Main.Settings.PortraitBrowserPageSize, MinPageSize, MaxPageSize, GUILayout.Width(150));
+            int newPageSize = Mathf.RoundToInt(sliderValue);
+
+            if (newPageSize != Main.Settings.PortraitBrowserPageSize)
+            {
+                Main.Settings.PortraitBrowserPageSize = newPageSize;
+                Main.Settings.Save(Main.ModEntry);
+                _browserPage = 0;
+            }
+            GUILayout.EndHorizontal();
+        }
+
+        private static void DrawPageNav(int totalPages)
+        {
+            GUILayout.BeginHorizontal();
+
+            GUI.enabled = _browserPage > 0;
+            if (GUILayout.Button(Localization.Get("Kitsune.ModUI.BrowserPrevPage"), GUILayout.Width(30)))
+            {
+                _browserPage--;
+            }
+            GUI.enabled = true;
+
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(Localization.Get("Kitsune.ModUI.BrowserPageInfo", _browserPage + 1, totalPages));
+            GUILayout.FlexibleSpace();
+
+            GUI.enabled = _browserPage < totalPages - 1;
+            if (GUILayout.Button(Localization.Get("Kitsune.ModUI.BrowserNextPage"), GUILayout.Width(30)))
+            {
+                _browserPage++;
+            }
+            GUI.enabled = true;
+
+            GUILayout.EndHorizontal();
         }
 
         private static void DrawThumbnail(string portraitId)
         {
             Sprite sprite = GetCachedPreview(portraitId);
             Rect rect = GUILayoutUtility.GetRect(BrowserThumbWidth, BrowserThumbHeight, GUILayout.Width(BrowserThumbWidth), GUILayout.Height(BrowserThumbHeight));
-            GUI.Box(rect, GUIContent.none);
+            DrawSpriteFitted(rect, sprite);
+        }
 
-            if (sprite == null || sprite.texture == null) return;
+        /// <summary>
+        /// Рисует спрайт вписанным в прямоугольник с сохранением исходного соотношения сторон
+        /// (contain-fit: letterbox/pillarbox по необходимости), а не растянутым по UV на весь
+        /// бокс — раньше это "плющило" неквадратные портреты.
+        /// </summary>
+        private static void DrawSpriteFitted(Rect box, Sprite sprite)
+        {
+            GUI.Box(box, GUIContent.none);
+
+            if (sprite == null || sprite.texture == null || sprite.rect.height <= 0f || sprite.rect.width <= 0f) return;
+
+            float spriteAspect = sprite.rect.width / sprite.rect.height;
+            float boxAspect = box.width / box.height;
+
+            Rect drawRect;
+            if (spriteAspect > boxAspect)
+            {
+                float height = box.width / spriteAspect;
+                drawRect = new Rect(box.x, box.y + (box.height - height) * 0.5f, box.width, height);
+            }
+            else
+            {
+                float width = box.height * spriteAspect;
+                drawRect = new Rect(box.x + (box.width - width) * 0.5f, box.y, width, box.height);
+            }
 
             Rect uv = new Rect(
                 sprite.rect.x / sprite.texture.width,
@@ -213,12 +340,17 @@ namespace KitsunePortrait
                 sprite.rect.width / sprite.texture.width,
                 sprite.rect.height / sprite.texture.height);
 
-            GUI.DrawTextureWithTexCoords(rect, sprite.texture, uv);
+            GUI.DrawTextureWithTexCoords(drawRect, sprite.texture, uv);
         }
 
         private static void EnsureCustomPortraitFoldersLoaded(bool forceRefresh)
         {
             if (_customPortraitFolders != null && !forceRefresh) return;
+
+            if (forceRefresh)
+            {
+                _browserPage = 0;
+            }
 
             _customPortraitFolders = new List<string>();
 
@@ -267,21 +399,8 @@ namespace KitsunePortrait
         private static void DrawPortraitPreview(string portraitId)
         {
             Sprite sprite = GetCachedPreview(portraitId);
-
-            Rect drawRect = GUILayoutUtility.GetRect(PreviewSize, PreviewSize, GUILayout.Width(PreviewSize), GUILayout.Height(PreviewSize));
-            GUI.Box(drawRect, GUIContent.none);
-
-            if (sprite == null || sprite.texture == null) return;
-
-            // Спрайт может быть частью атласа — вырезаем именно его прямоугольник
-            // через нормализованные UV, а не рисуем всю текстуру целиком.
-            Rect uv = new Rect(
-                sprite.rect.x / sprite.texture.width,
-                sprite.rect.y / sprite.texture.height,
-                sprite.rect.width / sprite.texture.width,
-                sprite.rect.height / sprite.texture.height);
-
-            GUI.DrawTextureWithTexCoords(drawRect, sprite.texture, uv);
+            Rect drawRect = GUILayoutUtility.GetRect(PreviewWidth, PreviewHeight, GUILayout.Width(PreviewWidth), GUILayout.Height(PreviewHeight));
+            DrawSpriteFitted(drawRect, sprite);
         }
 
         private static Sprite GetCachedPreview(string portraitId)
@@ -293,6 +412,14 @@ namespace KitsunePortrait
                 return cached;
             }
 
+            if (_previewDecodesThisFrame >= MaxPreviewDecodesPerFrame)
+            {
+                // Бюджет декодирования на этот кадр исчерпан — вернём null (плейсхолдер),
+                // портрет "доедет" на одном из следующих кадров. Это то, что не даёт окну
+                // подвиснуть при первом открытии галереи/страницы с непрогретым кэшем.
+                return null;
+            }
+
             if (PreviewCache.Count > PreviewCacheCap)
             {
                 // Простая защита от неограниченного роста, если игрок перебрал много ID.
@@ -301,6 +428,7 @@ namespace KitsunePortrait
 
             Sprite sprite = PortraitManager.GetSmallPortraitSprite(portraitId);
             PreviewCache[portraitId] = sprite; // кэшируем и null — чтобы не повторять неудачный лукап каждый кадр
+            _previewDecodesThisFrame++;
             return sprite;
         }
     }

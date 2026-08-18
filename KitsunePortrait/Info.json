@@ -2,8 +2,10 @@
     "Id": "KitsunePortrait",
     "DisplayName": "Kitsune Portrait Switcher",
     "Author": "DeCopiDoge1966",
-    "Version": "0.1.5",
+    "Version": "0.1.6",
     "ManagerVersion": "0.24.0",
+    "HomePage": "https://github.com/NikitaLozinsky/KitsunePortrait",
+    "Repository": "https://raw.githubusercontent.com/NikitaLozinsky/KitsunePortrait/main/Repository.json",
     "Requirements": [],
     "EntryMethod": "KitsunePortrait.Main.Load",
     "AssemblyName": "KitsunePortrait.dll"

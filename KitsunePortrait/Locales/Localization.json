@@ -137,44 +137,36 @@
       "zhCN": "选择"
     },
     {
-      "Key": "Kitsune.ModUI.BrowseButton",
-      "SimpleName": "KitsunePortrait.ModUI.BrowseButton",
+      "Key": "Kitsune.ModUI.BrowserPageInfo",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserPageInfo",
       "ProcessTemplates": false,
-      "ruRU": "Обзор",
-      "enGB": "Browse",
-      "zhCN": "浏览"
+      "ruRU": "Страница {0} / {1}",
+      "enGB": "Page {0} / {1}",
+      "zhCN": "第 {0} / {1} 页"
     },
     {
-      "Key": "Kitsune.ModUI.BrowserTitle",
-      "SimpleName": "KitsunePortrait.ModUI.BrowserTitle",
+      "Key": "Kitsune.ModUI.BrowserPrevPage",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserPrevPage",
       "ProcessTemplates": false,
-      "ruRU": "Выбор кастомного портрета:",
-      "enGB": "Select Custom Portrait:",
-      "zhCN": "选择自定义肖像："
+      "ruRU": "◀",
+      "enGB": "◀",
+      "zhCN": "◀"
     },
     {
-      "Key": "Kitsune.ModUI.BrowserRefresh",
-      "SimpleName": "KitsunePortrait.ModUI.BrowserRefresh",
+      "Key": "Kitsune.ModUI.BrowserNextPage",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserNextPage",
       "ProcessTemplates": false,
-      "ruRU": "Обновить",
-      "enGB": "Refresh",
-      "zhCN": "刷新"
+      "ruRU": "▶",
+      "enGB": "▶",
+      "zhCN": "▶"
     },
     {
-      "Key": "Kitsune.ModUI.BrowserEmpty",
-      "SimpleName": "KitsunePortrait.ModUI.BrowserEmpty",
+      "Key": "Kitsune.ModUI.BrowserPageSizeLabel",
+      "SimpleName": "KitsunePortrait.ModUI.BrowserPageSizeLabel",
       "ProcessTemplates": false,
-      "ruRU": "Папка Portraits пуста или не найдена.",
-      "enGB": "Portraits folder is empty or missing.",
-      "zhCN": "Portraits 文件夹为空或未找到。"
-    },
-    {
-      "Key": "Kitsune.ModUI.BrowserSelectButton",
-      "SimpleName": "KitsunePortrait.ModUI.BrowserSelectButton",
-      "ProcessTemplates": false,
-      "ruRU": "Выбрать",
-      "enGB": "Select",
-      "zhCN": "选择"
+      "ruRU": "На странице: {0}",
+      "enGB": "Per page: {0}",
+      "zhCN": "每页显示：{0}"
     },
     {
       "Key": "Kitsune.ModUI.LanguageLabel",
