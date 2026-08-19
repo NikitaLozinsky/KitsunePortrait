@@ -114,10 +114,12 @@ namespace KitsunePortrait
                     pair.FoxPortrait = InputBuffers[foxKey].Trim();
                     pair.HumanPortrait = InputBuffers[humanKey].Trim();
 
-                    Main.Settings.Save(modEntry);
-
+                    // Намеренно НЕ пишем на диск здесь (см. Settings.SyncCurrentSaveAndFlush) —
+                    // применяется сразу, но в постоянную запись сейва попадёт только когда игра
+                    // реально сохранится. Иначе правка "утекала" бы в запись сейва, загруженного
+                    // последним, даже если игрок с тех пор ни разу не сохранялся.
                     PortraitManager.UpdatePortrait(unit);
-                    Main.Logger?.Log($"[ModUI] Обновлены портреты для {unit.CharacterName}. Лиса: '{pair.FoxPortrait}', Человек: '{pair.HumanPortrait}'");
+                    Main.Logger?.Log($"[ModUI] Обновлены портреты (в памяти, до следующего сохранения игры) для {unit.CharacterName}. Лиса: '{pair.FoxPortrait}', Человек: '{pair.HumanPortrait}'");
                 }
 
                 GUILayout.EndVertical();

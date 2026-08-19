@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using HarmonyLib;
 using Kingmaker.Blueprints;
@@ -61,7 +61,12 @@ namespace KitsunePortrait
             CharGenState.CurrentForm = EditingPortraitForm.Fox;
 
             UnitEntityData unit = levelUpController?.Unit;
-            string unitId = unit?.UniqueId;
+
+            // Во время Респека unit — временный превью-юнит визарда (см. UnitHelper.Respec в
+            // игре), с ДРУГИМ UniqueId, чем у настоящего персонажа — читать/писать сохранённую
+            // пару портретов нужно под ID настоящего персонажа (см. PortraitManager.
+            // ResolveStorageUnit), иначе тут никогда не найдётся уже сохранённая для него пара.
+            string unitId = PortraitManager.ResolveStorageUnit(unit)?.UniqueId;
             bool isCurrentlyKitsune = PortraitManager.IsKitsune(unit);
 
             // Если юнит СЕЙЧАС (на момент открытия вкладки портрета) уже Кицунэ и для него
@@ -223,12 +228,36 @@ namespace KitsunePortrait
                 UnitEntityData unit = __instance.Unit;
                 var mode = __instance.State?.Mode;
 
-                bool isKitsune = Main.IsKitsuneSelectedInCharGen ||
+                // КОРЕНЬ бага "портреты после Респека слетают на старые при первой смене формы":
+                // во время Респека __instance.Unit — это ВРЕМЕННЫЙ превью-юнит визарда (см.
+                // UnitHelper.Respec в игре: newUnit = Game.Instance.CreateUnitVacuum(...);
+                // newUnit.PreviewOf = unit; LevelUpConfig.Create(newUnit, Respec)...OpenUI()) —
+                // у него СВОЙ, ДРУГОЙ UniqueId, отличный от настоящего персонажа. Он уничтожается
+                // сразу после завершения респека. Раньше пара портретов писалась под ЕГО ID —
+                // становилась "осиротевшей" и никогда больше не читалась, а запись настоящего
+                // персонажа так и оставалась со старыми (пред-респековыми) портретами. Именно её
+                // потом читает PortraitManager.UpdatePortrait при первой смене формы и "откатывает"
+                // на старую пару. Разрешаем связь через PreviewOf (см. PortraitManager.
+                // ResolveStorageUnit), чтобы писать под ID настоящего, долгоживущего персонажа.
+                UnitEntityData storageUnit = PortraitManager.ResolveStorageUnit(unit);
+
+                // Респек проигрывает LevelUpController.Commit ПО ОДНОМУ РАЗУ НА КАЖДЫЙ УРОВЕНЬ
+                // (RespecWindowVM.InitiateNextLevelup вызывает LevelUpConfig...OpenUI() заново
+                // для каждого следующего уровня) — вкладка портрета мода при этом открывается
+                // и используется только на ОДНОМ из этих commit'ов, а не на каждом. Поэтому
+                // важно различать: "эта конкретная сессия commit'а реально была в нашей вкладке
+                // портрета" (visitedPortraitUI, снимок Main.IsKitsuneSelectedInCharGen ДО того,
+                // как он будет сброшен ниже) от простого "юнит вообще Кицунэ" (нужно для того,
+                // чтобы PortraitManager.UpdatePortrait всё равно подхватывался на КАЖДОМ commit'е
+                // респека, восстанавливая сохранённую пару, даже если конкретно этот commit
+                // портретов не касался).
+                bool visitedPortraitUI = Main.IsKitsuneSelectedInCharGen;
+                bool isKitsune = visitedPortraitUI ||
                                  (unit.Progression?.Race != null && unit.Progression.Race.AssetGuidThreadSafe == Guids.KitsuneRace);
 
                 if (isKitsune)
                 {
-                    string unitId = unit.UniqueId;
+                    string unitId = storageUnit.UniqueId;
 
                     if (!Main.Settings.CharacterPortraits.TryGetValue(unitId, out PortraitPair pair))
                     {
@@ -256,12 +285,19 @@ namespace KitsunePortrait
                     }
 
                     // 2. Захватываем финальный портрет (например, мифический), если игра
-                    // применила его в обход перехвата — но только для формы Лисы. Выбор
-                    // формы Человека всегда блокируется в KitsunePortraitSelectionPatch
+                    // применила его в обход перехвата — но только для формы Лисы, и ТОЛЬКО
+                    // если эта сессия commit'а реально была в нашей вкладке портрета
+                    // (visitedPortraitUI). Без этого условия — на промежуточных commit'ах
+                    // респека (см. комментарий выше), где вкладка портрета не открывалась,
+                    // CharGenState.CurrentForm мог остаться равен Fox от ПРЕДЫДУЩЕГО визита,
+                    // и этот блок молча перезаписывал pair.FoxPortrait тем, что в этот момент
+                    // случайно оказалось в unit.UISettings — то есть новый, только что
+                    // сохранённый на предыдущем commit'е портрет мог быть затёрт устаревшим.
+                    // Выбор формы Человека всегда блокируется в KitsunePortraitSelectionPatch
                     // (return false) и поэтому никогда не попадает в unit.UISettings — если
                     // читать его отсюда для формы Человека, вместо человеческого портрета
                     // сюда всегда попадает последний реально применённый портрет лисы.
-                    if (CharGenState.CurrentForm == EditingPortraitForm.Fox)
+                    if (visitedPortraitUI && CharGenState.CurrentForm == EditingPortraitForm.Fox)
                     {
                         string activePortraitId = PortraitManager.GetPortraitId(unit);
                         if (!string.IsNullOrEmpty(activePortraitId) && pair.FoxPortrait != activePortraitId)
@@ -280,12 +316,31 @@ namespace KitsunePortrait
 
                     if (changed)
                     {
-                        Main.Settings.Save(Main.ModEntry);
-                        Main.Logger.Log($"[CharGen] Сохранено: {unit.CharacterName} | Лиса: '{pair.FoxPortrait}' | Человек: '{pair.HumanPortrait}' | Mode: {mode}");
+                        // Намеренно НЕ пишем на диск здесь (см. Settings.SyncCurrentSaveAndFlush)
+                        // — CharacterPortraits в памяти обновлён и это применится к юниту прямо
+                        // сейчас, но в постоянную запись СЕЙВА это попадёт только тогда, когда
+                        // игра реально сохранится. Если сохранить прямо тут, несохранённые
+                        // правки Респека утекали бы в запись сейва, сделанного ДО него, — именно
+                        // это раньше приводило к тому, что загрузка старого сейва не откатывала
+                        // портреты к тем, что были зафиксированы в нём.
+                        Main.Logger.Log($"[CharGen] Изменено (в памяти, до следующего сохранения игры): {unit.CharacterName} | Лиса: '{pair.FoxPortrait}' | Человек: '{pair.HumanPortrait}' | Mode: {mode}");
                     }
 
                     // Принудительно заставляем мод обновить портрет под текущую форму
                     PortraitManager.UpdatePortrait(unit);
+
+                    // Во время Респека unit — временный превью-юнит (см. комментарий выше), а
+                    // storageUnit — настоящий персонаж. Игра сама переносит "сырые" значения
+                    // портрета с превью-юнита на настоящего (UnitHelper.RespecOnCommit →
+                    // SetPortraitUnsafe) — благодаря этому сразу после Респека всё выглядит
+                    // нормально. Но это копирование не знает о ФОЛБЭКАХ мода (например,
+                    // FallbackHumanPortraitId) — поэтому дополнительно применяем нашу пару
+                    // напрямую и к настоящему персонажу, чтобы у него сразу было ровно то
+                    // состояние, которое отныне хранится под его собственным UniqueId.
+                    if (!ReferenceEquals(storageUnit, unit))
+                    {
+                        PortraitManager.UpdatePortrait(storageUnit);
+                    }
 
                     bool isCreationFlow = mode == LevelUpState.CharBuildMode.CharGen || mode == LevelUpState.CharBuildMode.Respec;
                     if (isCreationFlow && pair.HumanPortrait == CharGenState.DefaultHumanPlaceholderId)

@@ -1,7 +1,9 @@
-﻿using System.Reflection;
+using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.JsonSystem;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.ActivatableAbilities;
 using UnityEngine;
@@ -16,8 +18,12 @@ namespace KitsunePortrait
         private static Sprite _foxIcon;
         private static Sprite _humanIcon;
 
-        private static BlueprintScriptableObject _kitsuneBuffBlueprint;
-        private static BlueprintScriptableObject _kitsuneAbilityBlueprint;
+        // Разные Кицунэ в игре используют РАЗНЫЕ блупринты баффа/способности смены формы —
+        // общий для playable-расы и отдельные, свои собственные у Ненио (подтверждено дампом
+        // блупринтов игры, см. Guids.cs). Поэтому отслеживаем МНОЖЕСТВО известных блупринтов,
+        // а не один жёстко заданный.
+        private static readonly HashSet<BlueprintScriptableObject> HumanFormBuffBlueprints = new HashSet<BlueprintScriptableObject>();
+        private static readonly HashSet<BlueprintScriptableObject> ChangeShapeAbilityBlueprints = new HashSet<BlueprintScriptableObject>();
 
         [HarmonyPatch(typeof(BlueprintsCache), nameof(BlueprintsCache.Init))]
         public static class BlueprintsCache_Init_Patch
@@ -28,8 +34,27 @@ namespace KitsunePortrait
                 _foxIcon = Assets.LoadCustomSprite(AssetFoxIcon);
                 _humanIcon = Assets.LoadCustomSprite(AssetHumanIcon);
 
-                _kitsuneBuffBlueprint = ResourcesLibrary.TryGetBlueprint<BlueprintScriptableObject>(Guids.KitsuneHumanBuff);
-                _kitsuneAbilityBlueprint = ResourcesLibrary.TryGetBlueprint<BlueprintScriptableObject>(Guids.KitsuneChangeShapeAbility);
+                HumanFormBuffBlueprints.Clear();
+                AddBlueprint(HumanFormBuffBlueprints, Guids.KitsuneHumanBuff);
+                AddBlueprint(HumanFormBuffBlueprints, Guids.NenioHumanBuff);
+                AddBlueprint(HumanFormBuffBlueprints, Guids.NenioSpecialHumanBuff);
+
+                ChangeShapeAbilityBlueprints.Clear();
+                AddBlueprint(ChangeShapeAbilityBlueprints, Guids.KitsuneChangeShapeAbility);
+                AddBlueprint(ChangeShapeAbilityBlueprints, Guids.NenioChangeShapeAbility);
+            }
+
+            private static void AddBlueprint(HashSet<BlueprintScriptableObject> set, string guid)
+            {
+                var blueprint = ResourcesLibrary.TryGetBlueprint<BlueprintScriptableObject>(guid);
+                if (blueprint != null)
+                {
+                    set.Add(blueprint);
+                }
+                else
+                {
+                    Main.Logger?.Log($"[KitsuneBuffIconPatch] Блупринт не найден по GUID '{guid}' — иконка для него подменяться не будет.");
+                }
             }
         }
 
@@ -48,22 +73,28 @@ namespace KitsunePortrait
             {
                 if (__instance == null || __instance.Blueprint == null) return;
 
-                // 1. Бафф человеческой формы
-                if (ReferenceEquals(__instance.Blueprint, _kitsuneBuffBlueprint))
+                bool isHumanFormBuff = HumanFormBuffBlueprints.Contains(__instance.Blueprint);
+                bool isChangeShapeAbility = !isHumanFormBuff && ChangeShapeAbilityBlueprints.Contains(__instance.Blueprint);
+
+                if (!isHumanFormBuff && !isChangeShapeAbility) return;
+
+                // Владелец факта должен быть персонажем расы Кицунэ — сами блупринты выше и так
+                // уникальны для Кицунэ, так что это лишь подстраховка, а не сужение выборки.
+                // Портреты владельца этот патч не трогает — только спрайт иконки факта.
+                UnitEntityData owner = __instance.Owner?.Unit;
+                if (!PortraitManager.IsKitsune(owner)) return;
+
+                if (isHumanFormBuff)
                 {
-                    if (_humanIcon != null) 
+                    if (_humanIcon != null)
                         __result = _humanIcon;
                 }
-                // 2. Переключатель способности
-                else if (ReferenceEquals(__instance.Blueprint, _kitsuneAbilityBlueprint))
+                else if (__instance is ActivatableAbility ability)
                 {
-                    if (__instance is ActivatableAbility ability)
-                    {
-                        if (ability.IsOn && _humanIcon != null)
-                            __result = _humanIcon;
-                        else if (!ability.IsOn && _foxIcon != null)
-                            __result = _foxIcon;
-                    }
+                    if (ability.IsOn && _humanIcon != null)
+                        __result = _humanIcon;
+                    else if (!ability.IsOn && _foxIcon != null)
+                        __result = _foxIcon;
                 }
             }
         }

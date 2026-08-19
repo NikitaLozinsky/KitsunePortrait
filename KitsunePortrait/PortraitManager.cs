@@ -30,7 +30,24 @@ namespace KitsunePortrait
             }
             return false;
         }
-        
+
+        /// <summary>
+        /// Юнит, под чьим UniqueId должны храниться/читаться данные мода (CharacterPortraits,
+        /// OriginalFoxPortraits). Во время Респека игра строит для CharGen-визарда ВРЕМЕННОГО
+        /// юнита-"превью" с ДРУГИМ UniqueId (не настоящего персонажа) — UnitEntityData.PreviewOf
+        /// (см. UnitHelper.Respec в игре: newUnit.PreviewOf = unit), а LevelUpController и его
+        /// Commit оперируют именно этим временным юнитом. Временный юнит уничтожается сразу
+        /// после завершения респека — если хранить портреты под ЕГО UniqueId, запись становится
+        /// "осиротевшей" и никогда больше не читается, а запись настоящего персонажа так и
+        /// остаётся со старыми данными. Разрешаем связь через PreviewOf, чтобы всегда писать и
+        /// читать под ID настоящего, долгоживущего персонажа.
+        /// </summary>
+        public static UnitEntityData ResolveStorageUnit(UnitEntityData unit)
+        {
+            if (unit == null) return null;
+            return unit.PreviewOf.Entity ?? unit;
+        }
+
         public static string GetPortraitId(UnitEntityData unit)
         {
             if (unit?.UISettings == null) return null;
@@ -71,7 +88,11 @@ namespace KitsunePortrait
         {
             if (unit == null || !IsKitsune(unit)) return;
 
-            string unitId = unit.UniqueId;
+            // Ключ хранения ("настоящий" юнит) может отличаться от unit, если unit — временный
+            // превью-юнит Респека (см. ResolveStorageUnit). Сам портрет по-прежнему применяем
+            // к unit — именно он сейчас реально отображается (превью визарда во время Респека,
+            // либо обычный юнит в остальных случаях, когда unitId == storageUnit.UniqueId).
+            string unitId = ResolveStorageUnit(unit).UniqueId;
             bool inHumanForm = IsInHumanForm(unit);
 
             Main.Settings.CharacterPortraits.TryGetValue(unitId, out PortraitPair savedPair);

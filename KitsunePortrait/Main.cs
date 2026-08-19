@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using HarmonyLib;
+using Kingmaker;
 using Kingmaker.PubSubSystem;
 using UnityModManagerNet;
 
@@ -18,7 +19,8 @@ namespace KitsunePortrait
 
         // Временное состояние для экрана создания персонажа (CharGen)
         public static bool IsKitsuneSelectedInCharGen;
-        public static string SelectedFoxPortrait = string.Empty;
+        public static string
+            SelectedFoxPortrait = string.Empty;
         public static string TemporaryHumanPortrait = string.Empty;
 
         public static bool Load(UnityModManager.ModEntry modEntry)
@@ -27,7 +29,6 @@ namespace KitsunePortrait
             Logger = modEntry.Logger;
 
             Settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
-            Settings.OnAfterLoad();
 
             Localization.Load();
 
@@ -54,6 +55,18 @@ namespace KitsunePortrait
                     // Используем один экземпляр вочера
                     _buffWatcher ??= new KitsuneBuffWatcher();
                     EventBus.Subscribe(_buffWatcher);
+
+                    // Мод могли включить не в главном меню, а уже посреди активной игры — сейв
+                    // уже загружен до того, как применились патчи, и хук SaveManager.LoadRoutine
+                    // (см. SaveLifecyclePatches) для него не сработает. Подстраховываемся: если
+                    // сейчас есть активная игра, а CurrentSaveKey ещё не выставлен в этой сессии,
+                    // выставляем временный ключ по GameId прохождения (грубее, чем ключ
+                    // конкретного файла сейва, но не даёт панели мода остаться пустой до
+                    // следующей реальной загрузки/сохранения).
+                    if (string.IsNullOrEmpty(Settings.CurrentSaveKey) && Game.Instance?.Player != null)
+                    {
+                        Settings.LoadForSave(Game.Instance.Player.GameId);
+                    }
 
                     Logger.Log("KitsunePortrait включен: Harmony-патчи и подписки применены.");
                 }

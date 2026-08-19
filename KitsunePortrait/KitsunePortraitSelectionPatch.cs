@@ -14,6 +14,22 @@ namespace KitsunePortrait
             if (portrait == null)
                 return true;
 
+            // Игра периодически сама "эхо"-обновляет SelectedPortrait обратно на текущий
+            // реальный портрет контроллера (CharGenPortraitPhaseVM.TryUpdatePortraitFromState,
+            // вызывается из LevelUpController.UpdateCommand и при входе во вкладку портрета).
+            // Так как запись портрета Человека ниже ВСЕГДА блокируется (return false), реальный
+            // портрет контроллера — это ВСЕГДА портрет Лисы. Без этой проверки такое эхо в
+            // режиме Человека неотличимо от настоящего клика и затирает TemporaryHumanPortrait
+            // портретом Лисы — портрет Лисы "дублируется" на обе формы. Сам оригинальный метод
+            // в такой ситуации ничего не делает (см. его реализацию: вызывает SelectPortrait,
+            // только если Preview.Portrait != portrait.Data) — повторяем ту же проверку здесь,
+            // до нашей логики выбора формы.
+            var levelUpController = CharGenState.CachedLevelUpController;
+            if (levelUpController?.Preview?.Portrait != null && levelUpController.Preview.Portrait == portrait.Data)
+            {
+                return true;
+            }
+
             string portraitName = !string.IsNullOrEmpty(portrait.Data?.CustomId)
                 ? portrait.Data.CustomId
                 : portrait.AssetGuidThreadSafe;
