@@ -2,6 +2,8 @@
 
 A modification for **Pathfinder: Wrath of the Righteous** that fixes the vanilla limitation where kitsune are forced to use the same portrait for both forms. The mod allows you to set **two independent portraits** for a single character: one for the fox form and one for the human form.
 
+[![Nexus Mods](https://img.shields.io/badge/Nexus%20Mods-KitsunePortrait-red?style=flat-square&logo=nexusmods)](https://www.nexusmods.com/pathfinderwrathoftherighteous/mods/1151?tab=files)
+
 ## Features
 
 * **Independent Portraits:** Separate selection, binding, and saving of portraits for fox and human forms.
@@ -23,7 +25,7 @@ A modification for **Pathfinder: Wrath of the Righteous** that fixes the vanilla
 ## Installation
 
 1. Make sure you have **Unity Mod Manager** installed for Pathfinder: WotR.
-2. Download the archive with the latest version of the mod from the releases page.
+2. Download the archive with the latest version of the mod from [Nexus Mods](https://www.nexusmods.com/pathfinderwrathoftherighteous/mods/1151?tab=files) or the GitHub releases page.
 3. Install the archive via Unity Mod Manager or extract the mod folder into the `Pathfinder Wrath of the Righteous/Mods` directory.
 
 ---
@@ -31,6 +33,8 @@ A modification for **Pathfinder: Wrath of the Righteous** that fixes the vanilla
 # 🇷🇺 Мод на портреты Кицунэ для Pathfinder: Wrath of the Righteous
 
 Модификация для игры **Pathfinder: Wrath of the Righteous**, которая исправляет ограничение ванильной игры, где кицунэ вынуждены использовать один и тот же портрет для обеих форм. Мод добавляет возможность настроить **два независимых портрета** для одного персонажа: один для формы лисы, а второй — для формы человека.
+
+[![Nexus Mods](https://img.shields.io/badge/Nexus%20Mods-KitsunePortrait-red?style=flat-square&logo=nexusmods)](https://www.nexusmods.com/pathfinderwrathoftherighteous/mods/1151?tab=files)
 
 ## Особенности мода
 
@@ -53,5 +57,5 @@ A modification for **Pathfinder: Wrath of the Righteous** that fixes the vanilla
 ## Установка
 
 1. Убедитесь, что у вас установлен **Unity Mod Manager** для Pathfinder: WotR.
-2. Скачайте архив с последней версией мода со страницы релизов.
+2. Скачайте архив с последней версией мода с [Nexus Mods](https://www.nexusmods.com/pathfinderwrathoftherighteous/mods/1151?tab=files) или со страницы релизов GitHub.
 3. Установите архив через Unity Mod Manager или распакуйте папку с модом в директорию `Pathfinder Wrath of the Righteous/Mods`.
